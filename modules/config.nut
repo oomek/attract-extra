@@ -1,6 +1,6 @@
 ///////////////////////////////////////////////////
 //
-// Attract-Mode Frontend - "config" module v1.0
+// Attract-Mode Frontend - "config" module v1.1
 //
 // Provides the ability to read a value
 // defined in attract.cfg
@@ -16,31 +16,38 @@ if ( !( "AttractConfig" in getroottable() ))
 {
 	AttractConfig <-
 	{
+		cache = {},
+		blob_file = blob(),
 		init = function()
 		{
 			local file = file( fe.path_expand( FeConfigDirectory + "attract.cfg") , "r" )
-			blob = file.readblob( file.len() )
+			AttractConfig.blob_file = file.readblob( file.len() )
 		},
 
 		get_config_value = function( str )
 		{
+			if ( str in AttractConfig.cache )
+				return AttractConfig.cache[str]
+
 			local str_index = 0
-			while ( !blob.eos() && str_index < str.len() )
+			while ( !AttractConfig.blob_file.eos() && str_index < str.len() )
 			{
-				if ( blob.readn('b') == str[str_index] )
+				if ( AttractConfig.blob_file.readn('b') == str[str_index] )
 					str_index++
 				else
 					str_index = 0
 			}
 			local value = ""
 			local char = ""
-			while ( !blob.eos() )
+			while ( !AttractConfig.blob_file.eos() )
 			{
-				char = blob.readn('b').tochar()
+				char = AttractConfig.blob_file.readn('b').tochar()
 				if ( char == "\n" ) break
 				value += char
 			}
-			return strip( value )
+
+			AttractConfig.cache[str] <- strip( value )
+			return AttractConfig.cache[str]
 		},
 	}
 
