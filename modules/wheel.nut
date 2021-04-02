@@ -1,6 +1,6 @@
 ///////////////////////////////////////////////////
 //
-// Attract-Mode Frontend - "wheel" module v0.6
+// Attract-Mode Frontend - "wheel" module v0.65
 //
 // Provides an Animated list of artwork slots
 // with fully customizable layout
@@ -24,7 +24,7 @@ fe.load_module( "config.nut" )
 
 class Wheel
 {
-	static VERSION = 0.6
+	static VERSION = 0.65
 	static PRESETS_DIR = fe.module_dir + "wheel-presets/"
 	static SELECTION_SPEED = fe.get_config_value( "selection_speed_ms" ).tointeger()
 
@@ -47,6 +47,8 @@ class Wheel
 	max_idx_offset = null
 	first_run = null
 	resync = null
+	end_navigation = null
+	end_navigation_idx = null
 
 	constructor( config )
 	{
@@ -70,6 +72,12 @@ class Wheel
 		if ( !("preset" in cfg )) cfg.preset <- ""
 		fe.list.page_size = cfg.slots
 
+		if ( !("trigger" in cfg )) cfg.trigger <- "ToNewSelection"
+		if ( cfg.trigger == "ToNewSelection" )
+			end_navigation = false
+		else
+			end_navigation = true
+
 		// Initializing locals
 		velocity = InertiaVar( 0.0, cfg.speed, 0.0 )
 		slots = []
@@ -82,8 +90,9 @@ class Wheel
 		selection_time_old = 0
 		max_idx_offset = cfg.slots / 2
 		resync = false
+		end_navigation_idx = 0
 
-		cfg.init()
+		if ( "init" in cfg ) cfg.init()
 
 		// Calculating zorder array based on Wheel zorder and index_offset so the selected slot is always on top
 		cfg.layout.zorder <- []
@@ -123,11 +132,20 @@ function Wheel::on_transition( ttype, var, ttime )
 	}
 	else if ( ttype == Transition.ToNewSelection )
 	{
-		if ( fe.list.size > 0 )
-			queue.push( idx2off( fe.layout.index + var ))
+		if ( !end_navigation )
+			if ( fe.list.size > 0 )
+			 	queue.push( idx2off( fe.layout.index + var, fe.layout.index ))
 	}
 	else if ( ttype == Transition.FromOldSelection )
 	{
+	}
+	else if ( ttype == Transition.EndNavigation )
+	{
+		if ( end_navigation )
+			if ( fe.list.size > 0 )
+				queue.push( idx2off( fe.layout.index, end_navigation_idx ))
+
+		end_navigation_idx = fe.layout.index
 	}
 
 	return false
@@ -183,7 +201,7 @@ function Wheel::on_tick( ttime )
 			queue_load--
 			wheel_idx = wrap( ++wheel_idx, fe.list.size )
 			slots[slot_load_idx].file_name = fe.get_art( cfg.artwork_label,
-			                                             idx2off( wheel_idx + max_idx_offset + cfg.index_offset ),
+			                                             idx2off( wheel_idx + max_idx_offset + cfg.index_offset, fe.list.index ),
 			                                             0,
 			                                             cfg.video_flags & 1 )
 		}
@@ -192,7 +210,7 @@ function Wheel::on_tick( ttime )
 			queue_load++
 			wheel_idx = wrap( --wheel_idx, fe.list.size )
 			slots[slot_load_idx].file_name = fe.get_art( cfg.artwork_label,
-			                                             idx2off( wheel_idx - max_idx_offset + cfg.index_offset ),
+			                                             idx2off( wheel_idx - max_idx_offset + cfg.index_offset, fe.list.index ),
 			                                             0,
 			                                             cfg.video_flags & 1 )
 		}
@@ -230,19 +248,24 @@ function Wheel::on_tick( ttime )
 function Wheel::reload_tiles()
 {
 	wheel_idx = fe.list.index
+	end_navigation_idx = fe.list.index
 	slots_idx_offset = 0
 	velocity.set = 0.0
 	slot_load_idx = 0
 	queue_next = 0
 	queue_load = 0
+
 	for ( local i = 0; i < cfg.slots; i++ )
-		slots[i].file_name = fe.get_art( cfg.artwork_label, i - max_idx_offset + cfg.index_offset, 0, cfg.video_flags & 1 )
+		slots[i].file_name = fe.get_art( cfg.artwork_label,
+		                                 i - max_idx_offset + cfg.index_offset,
+		                                 0,
+		                                 cfg.video_flags & 1 )
 }
 
-function Wheel::idx2off( idx )
+function Wheel::idx2off( new, old )
 {
-	local positive = wrap( idx - fe.list.index, fe.list.size )
-	local negative = wrap( fe.list.index - idx, fe.list.size )
+	local positive = wrap( new - old, fe.list.size )
+	local negative = wrap( old - new, fe.list.size )
 	if ( positive > negative )
 		return -negative
 	else
