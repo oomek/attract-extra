@@ -1,12 +1,12 @@
 ///////////////////////////////////////////////////
 //
-// Attract-Mode Frontend - "Console" plugin v1.2
+// Attract-Mode Frontend - "Console" plugin v1.3
 //
 // by Oomek - Radek Dutkiewicz 2021
 //
 ///////////////////////////////////////////////////
 
-class UserConfig </ help="A plugin that shows the console output on the screen v1.0" />
+class UserConfig </ help="A plugin that shows the console output on the screen v1.3" />
 {
 	</ label="Font Size",
 		help="Sets the font size",
@@ -29,8 +29,8 @@ class UserConfig </ help="A plugin that shows the console output on the screen v
 
 class Console
 {
-	static VERSION = 1.2
-	static CON_ZORDER =  2147483647 // maximum zorder value
+	static VERSION = 1.3
+	static CON_ZORDER = 2147483647 // maximum zorder value
 	static PRINT = ::print
 	con = null
 	pass_through = null
@@ -53,7 +53,6 @@ class Console
 		con.visible = false
 		con_time_old = -2000
 		con_event = false
-		con.zorder = CON_ZORDER
 
 		switch ( config["font_size"].tolower() )
 		{
@@ -97,6 +96,7 @@ class Console
 	{
 		if ( sig == "back" && con.visible )
 		{
+			con.zorder = 0
 			con_time_old = fe.layout.time
 			con.visible = false
 			return true
