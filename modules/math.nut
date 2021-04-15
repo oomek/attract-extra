@@ -9,7 +9,7 @@
 ///////////////////////////////////////////////////
 
 function wrap( i, n ) { while ( i < 0 ) { i += n }; while ( i >= n ) { i -= n }; return i }
-function sign( x ) { return x < 0.0 ? -1 : 1 }
+function sign( x ) { return x <=> 0 }
 function round( x ) { return floor( x + 0.5 ) }
 function round2( x, p ) { return floor( x / 2.0 + 0.5 ) * 2.0 }
 function floor2( x ) { return floor( x / 2.0 ) * 2.0 }
