@@ -368,9 +368,7 @@ class InertiaVar
 		}
 		else if ( idx == "dir")
 		{
-			if ( m_buffer[2] < m_buffer[3] ) return 1
-			else if ( m_buffer[2] > m_buffer[3] ) return -1
-			else return 0
+			return m_buffer[3] <=> m_buffer[2]
 		}
 	}
 }
