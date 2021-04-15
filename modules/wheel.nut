@@ -1,6 +1,6 @@
 ///////////////////////////////////////////////////
 //
-// Attract-Mode Frontend - "wheel" module v0.8
+// Attract-Mode Frontend - "wheel" module v1.0
 //
 // Provides an Animated list of artwork slots
 // with fully customizable layout
@@ -24,9 +24,10 @@ fe.load_module( "config.nut" )
 
 class Wheel
 {
-	static VERSION = 0.8
+	static VERSION = 1.0
 	static PRESETS_DIR = fe.module_dir + "wheel-presets/"
 	static SELECTION_SPEED = fe.get_config_value( "selection_speed_ms" ).tointeger()
+	FRAME_TIME = null
 
 	// properties
 	x = null
@@ -36,22 +37,27 @@ class Wheel
 	// locals
 	cfg = null
 	velocity = null
+	velocity_int = null
 	slots = null
 	queue = null
 	queue_next = null
 	queue_load = null
 	wheel_idx = null
-	wheel_idx_old = null
-	wheel_idx_end = null
-	slots_idx_offset = null
-	slot_load_idx = null
-	selection_time_old = null
-	selected_slot_idx = null
 	max_idx_offset = null
+	end_idx_old = null
+	end_idx_offset = null
+	end_navigation = null
+	selected_slot_idx = null
+	selection_time_old = null
 	resync = null
+	mix_idx_off = null
+	sel_slot = null
+
 
 	constructor( config )
 	{
+		FRAME_TIME = 1000 / ScreenRefreshRate
+
 		// Binding config as local
 		cfg = config
 
@@ -71,23 +77,23 @@ class Wheel
 		if ( !("preserve_aspect_ratio" in cfg )) cfg.preserve_aspect_ratio <- false
 		if ( !("trigger" in cfg )) cfg.trigger <- Transition.ToNewSelection
 		if ( !("preset" in cfg )) cfg.preset <- ""
-		fe.list.page_size = cfg.slots
 
 		// Initializing locals
 		velocity = InertiaVar( 0.0, cfg.speed, 0.0 )
+		velocity_int = 0
 		slots = []
 		queue = []
 		queue_next = 0
 		queue_load = 0
 		wheel_idx = 0
-		wheel_idx_old = 0
-		wheel_idx_end = -1
-		slots_idx_offset = 0
-		slot_load_idx = 0
-		selection_time_old = 0
-		selected_slot_idx = cfg.slots / 2
 		max_idx_offset = cfg.slots / 2
+		end_idx_old = 0
+		end_idx_offset = 0
+		end_navigation = true
+		selected_slot_idx = max_idx_offset - cfg.index_offset
+		selection_time_old = 0
 		resync = false
+		mix_idx_off = 0
 
 		if ( "init" in cfg ) cfg.init()
 
@@ -115,6 +121,9 @@ class Wheel
 			slots.push( s )
 		}
 
+		// To be accessed by the layout
+		sel_slot = slots[selected_slot_idx]
+
 		// Binding callbacks
 		fe.add_ticks_callback( this, "on_tick" )
 		fe.add_transition_callback( this, "on_transition" )
@@ -125,15 +134,24 @@ function Wheel::on_transition( ttype, var, ttime )
 {
 	if ( ttype == Transition.ToNewList )
 	{
-		reload_tiles()
+		reload_slots()
 	}
 
 	else if ( ttype == Transition.ToNewSelection )
 	{
-		if ( cfg.trigger == ttype && fe.list.size > 0 )
+		if ( fe.list.size > 0 )
 		{
-			slots[selected_slot_idx].video_flags = cfg.video_flags | Vid.NoAudio
-		 	queue.push( idx2off( fe.layout.index + var, fe.layout.index ))
+			if ( cfg.trigger == ttype )
+			{
+				foreach ( s in slots ) s.video_flags = cfg.video_flags | Vid.NoAudio
+
+				if ( abs( var ) == 1 )
+					queue.push( var )
+				else
+					queue.push( idx2off( fe.layout.index + var, fe.layout.index ))
+				end_navigation = false
+			}
+			else end_idx_offset += var
 		}
 	}
 
@@ -143,14 +161,22 @@ function Wheel::on_transition( ttype, var, ttime )
 
 	else if ( ttype == Transition.EndNavigation )
 	{
-		if ( cfg.trigger == ttype && fe.list.size > 0 )
+		if ( fe.list.size > 0 )
 		{
-			slots[selected_slot_idx].video_flags = cfg.video_flags | Vid.NoAudio
-			queue.push( idx2off( fe.layout.index, wheel_idx_old ))
-		}
+			if ( cfg.trigger == ttype )
+			{
+				foreach ( s in slots ) s.video_flags = cfg.video_flags | Vid.NoAudio
 
-		wheel_idx_end = fe.layout.index
-		wheel_idx_old = fe.layout.index
+				if ( abs( end_idx_offset ) == 1 )
+					queue.push( end_idx_offset )
+				else
+					queue.push( idx2off( end_idx_old + end_idx_offset, end_idx_old ) )
+			}
+
+			end_idx_old = fe.layout.index
+			end_idx_offset = 0
+			end_navigation = true
+		}
 	}
 
 	return false
@@ -163,7 +189,7 @@ function Wheel::on_tick( ttime )
 	if ( queue_load == 0 && queue_next == 0 ) resync = false
 
 	if ( queue.len() > 0 )
-		if ( resync == false || sign( queue[0] ) == velocity.dir )
+		if ( resync == false || (( sign( queue[0] ) == velocity.dir ) && ( sign( queue[0] ) == sign( queue_next ) || ( queue_next == 0 ))))
 			queue_next += queue.remove(0)
 
 	if ( queue_next != 0 )
@@ -182,51 +208,46 @@ function Wheel::on_tick( ttime )
 			if ( queue_next != 0 )
 			{
 				velocity.from += dir
+				velocity_int -= dir
 				queue_load += dir
-				slots_idx_offset -= dir
-				slots_idx_offset = wrap( slots_idx_offset, cfg.slots )
 				queue_next -= dir
 			}
 		}
 	}
 
-	// Fix for delay == 0 which is still broken apparently
-	if ( queue_load > 0 )
-		slot_load_idx = wrap( cfg.slots - floor( velocity.get ) - slots_idx_offset - 1, cfg.slots )
-	if ( queue_load < 0 )
-		slot_load_idx = wrap( cfg.slots - ceil( velocity.get ) - slots_idx_offset, cfg.slots )
-
-
 	// Handling audio flags
-	if ( wheel_idx == wheel_idx_end && wheel_idx == fe.layout.index )
+	if ( end_navigation == true && wheel_idx == fe.layout.index && queue_load == 0 )
 	{
-		selected_slot_idx = wrap( max_idx_offset - slots_idx_offset - cfg.index_offset, cfg.slots )
 		slots[selected_slot_idx].video_flags = cfg.video_flags
-		wheel_idx_end = -1
+		end_navigation = false
 	}
 
-
 	// LOADING ARTWORK
-	//
-	if ( queue_load != 0 )
+
 	{
-		if ( velocity.get + 0.5 < queue_load && velocity.dir > 0 )
+		if ( velocity.get + velocity_int <= -0.5 && ( velocity.dir > 0 || cfg.speed < FRAME_TIME ))
 		{
+			swap_slots( 1 )
+			velocity_int++
 			queue_load--
-			wheel_idx = wrap( ++wheel_idx, fe.list.size )
-			slots[slot_load_idx].video_flags = cfg.video_flags | Vid.NoAudio
-			slots[slot_load_idx].file_name = fe.get_art( cfg.artwork_label,
-			                                             idx2off( wheel_idx + max_idx_offset + cfg.index_offset, fe.list.index ),
+			wheel_idx++
+			wheel_idx = wrap( wheel_idx, fe.list.size )
+			slots[cfg.slots - 1].video_flags = cfg.video_flags | Vid.NoAudio
+			slots[cfg.slots - 1].file_name = fe.get_art( cfg.artwork_label,
+			                                             idx2off( wheel_idx + max_idx_offset + cfg.index_offset - 0, fe.list.index ),
 			                                             0,
 			                                             cfg.video_flags & Art.ImagesOnly )
 		}
-		if ( velocity.get - 0.5 > queue_load && velocity.dir < 0 )
+		if ( velocity.get + velocity_int >= 0.5 && ( velocity.dir < 0 || cfg.speed < FRAME_TIME ))
 		{
+			swap_slots( -1 )
+			velocity_int--
 			queue_load++
-			wheel_idx = wrap( --wheel_idx, fe.list.size )
-			slots[slot_load_idx].video_flags = cfg.video_flags | Vid.NoAudio
-			slots[slot_load_idx].file_name = fe.get_art( cfg.artwork_label,
-			                                             idx2off( wheel_idx - max_idx_offset + cfg.index_offset, fe.list.index ),
+			wheel_idx--
+			wheel_idx = wrap( wheel_idx, fe.list.size )
+			slots[0].video_flags = cfg.video_flags | Vid.NoAudio
+			slots[0].file_name = fe.get_art( cfg.artwork_label,
+			                                             idx2off( wheel_idx - max_idx_offset + cfg.index_offset + 0, fe.list.index ),
 			                                             0,
 			                                             cfg.video_flags & Art.ImagesOnly )
 		}
@@ -235,18 +256,18 @@ function Wheel::on_tick( ttime )
 
 	// SETTING PROPERTIES
 	//
-	// Adding 8192 to avoid negative numbers and to normalize float precision
-	local mix_idx2 = floor( velocity.get + 8192.0 ) - 8192
+	local mix_amount = velocity.get % 1.0
+	if ( velocity.get <= 0 ) mix_amount += 1
+	local mix_idx2 = floor( 0.5 - mix_amount )
 	local mix_idx1 = mix_idx2 + 1
-	local mix_amount = ( velocity.get + 8192.0 ) % sign( velocity.get )
 
 	// Applying interpolated layout properties to slots
 	foreach ( name, prop in cfg.layout )
 	{
 		for ( local i = 0; i < cfg.slots; i++ )
 		{
-			local idx1 = wrap( mix_idx1 + i + slots_idx_offset, cfg.slots )
-			local idx2 = wrap( mix_idx2 + i + slots_idx_offset, cfg.slots )
+			local idx1 = wrap( mix_idx1 + i, cfg.slots )
+			local idx2 = wrap( mix_idx2 + i, cfg.slots )
 			slots[i][name] = mix( prop[idx1], prop[idx2], mix_amount )
 
 			if ( name == "x" ) slots[i][name] += x
@@ -264,14 +285,14 @@ function Wheel::on_tick( ttime )
 	for ( local i = 0; i < cfg.slots; i++ ) slots[i].visible = slots[i].alpha
 }
 
-function Wheel::reload_tiles()
+function Wheel::reload_slots()
 {
+	fe.list.page_size = min( cfg.slots, max( fe.list.size / 2, 1 ))
 	wheel_idx = fe.list.index
-	wheel_idx_end = -1
-	wheel_idx_old = fe.list.index
-	slots_idx_offset = 0
+	end_idx_old = fe.list.index
+	end_idx_offset = 0
+	velocity_int = 0
 	velocity.set = 0.0
-	slot_load_idx = 0
 	queue_next = 0
 	queue_load = 0
 
@@ -285,7 +306,6 @@ function Wheel::reload_tiles()
 		slots[i].video_flags = cfg.video_flags | Vid.NoAudio
 	}
 
-	selected_slot_idx = max_idx_offset - cfg.index_offset
 	slots[selected_slot_idx].video_flags = cfg.video_flags
 }
 
@@ -297,6 +317,14 @@ function Wheel::idx2off( new, old )
 		return -negative
 	else
 		return positive
+}
+
+function Wheel::swap_slots( dir )
+{
+	if ( dir == 1 )
+		for ( local i = 1; i < cfg.slots; i++ ) slots[i].swap( slots[i - 1] )
+	else
+		for ( local i = cfg.slots - 1; i > 0; i-- ) slots[i].swap( slots[i - 1] )
 }
 
 // Binding the wheel to fe
