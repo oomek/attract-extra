@@ -1,6 +1,6 @@
 ///////////////////////////////////////////////////
 //
-// Attract-Mode Frontend - "wheel" module v1.0
+// Attract-Mode Frontend - "wheel" module v1.1
 //
 // Provides an Animated list of artwork slots
 // with fully customizable layout
@@ -10,12 +10,10 @@
 ///////////////////////////////////////////////////
 
 // TODO:
-// - morphing presets
-// - slot override as a complex class object
+// - WheelSlot class
 // - load by index not by offset,
-//   move idx2off to WheelSlot class
+// - move idx2off to WheelSlot class
 //   to allow updating text drawables in WheelSlot class
-// - surface support
 
 
 fe.load_module( "math.nut" )
@@ -24,9 +22,10 @@ fe.load_module( "config.nut" )
 
 class Wheel
 {
-	static VERSION = 1.0
-	static PRESETS_DIR = fe.module_dir + "wheel-presets/"
-	static SELECTION_SPEED = fe.get_config_value( "selection_speed_ms" ).tointeger()
+	static VERSION = 1.1
+	static PRESETS_DIR = ::fe.module_dir + "wheel-presets/"
+	static SCRIPT_DIR = ::fe.script_dir
+	static SELECTION_SPEED = ::fe.get_config_value( "selection_speed_ms" ).tointeger()
 	FRAME_TIME = null
 
 	// properties
@@ -36,6 +35,10 @@ class Wheel
 
 	// locals
 	cfg = null
+	preset = null
+	layout = null
+	surface = null
+	parent = null
 	velocity = null
 	velocity_int = null
 	slots = null
@@ -54,12 +57,79 @@ class Wheel
 	sel_slot = null
 
 
-	constructor( config )
+	constructor( ... )
 	{
-		FRAME_TIME = 1000 / ScreenRefreshRate
+		// Variable arguments parser
+		local config = ""
 
-		// Binding config as local
-		cfg = config
+		if ( vargv.len() == 1 )
+		{
+			config = vargv[0]
+			parent = ::fe.layout
+			surface = ::fe
+		}
+		else if ( vargv.len() == 2 )
+		{
+			config = vargv[0]
+			parent = vargv[1]
+			surface = vargv[1]
+		}
+		else
+			throw "add_wheel: Wrong number of parameters\n"
+
+		// Config / Preset Loader
+		if ( typeof config == "string" )
+		{
+			if ( ends_with( config, ".nut" ))
+				cfg = ::dofile( SCRIPT_DIR + config, true )
+			else
+				cfg = ::dofile( PRESETS_DIR + config + ".nut", true )
+
+			layout = {}
+			cfg.layout <- {}
+			cfg.parent <- parent
+			cfg.init()
+			foreach ( k, v in cfg.layout ) if ( typeof v == "array" && v.len() == 0 ) cfg.layout[k] = ::array( cfg.slots, 0.0 )
+		}
+		else
+		{
+			cfg = config
+			layout = {}
+			cfg.layout <- {}
+			cfg.init()
+			foreach ( k, v in cfg.layout ) if ( typeof v == "array" && v.len() == 0 ) cfg.layout[k] = ::array( cfg.slots, 0.0 )
+
+			if ( "preset" in cfg )
+			{
+				preset = ::dofile( PRESETS_DIR + cfg.preset + ".nut", true )
+				delete cfg.preset
+				preset.layout <- {}
+				preset.parent <- parent
+				preset.init()
+				cfg.init.call( preset )
+				foreach ( k, v in preset.layout ) if ( typeof v == "array" && v.len() == 0 ) preset.layout[k] = ::array( cfg.slots, 0.0 )
+			}
+		}
+
+		// Copying array pointers from config and preset to layout table
+		if ( preset )
+		{
+			foreach ( k, v in preset.layout )
+			{
+				if ( !( k in layout )) layout[k] <- []
+				layout[k] = preset.layout[k]
+			}
+		}
+
+		foreach ( k, v in cfg.layout )
+		{
+			if ( !( k in layout )) layout[k] <- []
+			layout[k] = cfg.layout[k]
+		}
+
+		// First update
+		if ( "update" in preset ) preset.update()
+		if ( "update" in cfg ) cfg.update()
 
 		// Parsing Wheel's properties
 		if ( "x" in cfg ) x = cfg.x else x = 0
@@ -79,7 +149,7 @@ class Wheel
 		if ( !("preset" in cfg )) cfg.preset <- ""
 
 		// Initializing locals
-		velocity = InertiaVar( 0.0, cfg.speed, 0.0 )
+		velocity = ::InertiaVar( 0.0, cfg.speed, 0.0 )
 		velocity_int = 0
 		slots = []
 		queue = []
@@ -94,27 +164,24 @@ class Wheel
 		selection_time_old = 0
 		resync = false
 		mix_idx_off = 0
-
-		if ( "init" in cfg ) cfg.init()
+		FRAME_TIME = 1000 / ScreenRefreshRate
 
 		// Calculating zorder array based on Wheel zorder and index_offset so the selected slot is always on top
-		cfg.layout.zorder <- []
+		layout.zorder <- []
 		for ( local i = -max_idx_offset; i <= max_idx_offset; i++ )
-			cfg.layout.zorder.push( max_idx_offset - abs( i + cfg.zorder_offset ) + cfg.zorder - 0.5 + abs( cfg.zorder_offset ))
+			layout.zorder.push( max_idx_offset - ::abs( i + cfg.zorder_offset ) + cfg.zorder - 0.5 + ::abs( cfg.zorder_offset ))
 
-		// Create arrays if not defined
-		if ( !("x" in cfg.layout )) cfg.layout.x <- array( cfg.slots, 0 )
-		if ( !("y" in cfg.layout )) cfg.layout.y <- array( cfg.slots, 0 )
-		if ( !("alpha" in cfg.layout )) cfg.layout.alpha <- array( cfg.slots, 255 )
+		// Create alpha array if not defined
+		if ( !("alpha" in layout )) layout.alpha <- ::array( cfg.slots, 255 )
 
 		// Setting alpha of offside slots to 0
-		cfg.layout.alpha[0] = 0
-		cfg.layout.alpha[cfg.slots - 1] = 0
+		layout.alpha[0] = 0
+		layout.alpha[cfg.slots - 1] = 0
 
 		// Creating an array of images
 		for ( local i = 0; i < cfg.slots; i++ )
 		{
-			local s = fe.add_image( "", cfg.layout.x[i], cfg.layout.y[i], cfg.layout.width[i], cfg.layout.height[i] )
+			local s = surface.add_image( "", 0, 0, 1, 1 )
 			s.video_flags = cfg.video_flags
 			s.preserve_aspect_ratio = cfg.preserve_aspect_ratio
 			s.mipmap = true
@@ -125,8 +192,8 @@ class Wheel
 		sel_slot = slots[selected_slot_idx]
 
 		// Binding callbacks
-		fe.add_ticks_callback( this, "on_tick" )
-		fe.add_transition_callback( this, "on_transition" )
+		::fe.add_ticks_callback( this, "on_tick" )
+		::fe.add_transition_callback( this, "on_transition" )
 	}
 }
 
@@ -139,16 +206,16 @@ function Wheel::on_transition( ttype, var, ttime )
 
 	else if ( ttype == Transition.ToNewSelection )
 	{
-		if ( fe.list.size > 0 )
+		if ( ::fe.list.size > 0 )
 		{
 			if ( cfg.trigger == ttype )
 			{
 				foreach ( s in slots ) s.video_flags = cfg.video_flags | Vid.NoAudio
 
-				if ( abs( var ) == 1 )
+				if ( ::abs( var ) == 1 )
 					queue.push( var )
 				else
-					queue.push( idx2off( fe.layout.index + var, fe.layout.index ))
+					queue.push( idx2off( ::fe.layout.index + var, ::fe.layout.index ))
 				end_navigation = false
 			}
 			else end_idx_offset += var
@@ -161,19 +228,19 @@ function Wheel::on_transition( ttype, var, ttime )
 
 	else if ( ttype == Transition.EndNavigation )
 	{
-		if ( fe.list.size > 0 )
+		if ( ::fe.list.size > 0 )
 		{
 			if ( cfg.trigger == ttype )
 			{
 				foreach ( s in slots ) s.video_flags = cfg.video_flags | Vid.NoAudio
 
-				if ( abs( end_idx_offset ) == 1 )
+				if ( ::abs( end_idx_offset ) == 1 )
 					queue.push( end_idx_offset )
 				else
 					queue.push( idx2off( end_idx_old + end_idx_offset, end_idx_old ) )
 			}
 
-			end_idx_old = fe.layout.index
+			end_idx_old = ::fe.layout.index
 			end_idx_offset = 0
 			end_navigation = true
 		}
@@ -185,23 +252,22 @@ function Wheel::on_transition( ttype, var, ttime )
 function Wheel::on_tick( ttime )
 {
 	// ANIMATING THE WHEEL
-	//
 	if ( queue_load == 0 && queue_next == 0 ) resync = false
 
 	if ( queue.len() > 0 )
-		if ( resync == false || (( sign( queue[0] ) == velocity.dir ) && ( sign( queue[0] ) == sign( queue_next ) || ( queue_next == 0 ))))
+		if ( resync == false || (( ::sign( queue[0] ) == velocity.dir ) && ( ::sign( queue[0] ) == ::sign( queue_next ) || ( queue_next == 0 ))))
 			queue_next += queue.remove(0)
 
 	if ( queue_next != 0 )
 	{
-		if ( fe.layout.time - selection_time_old > SELECTION_SPEED )
+		if ( ::fe.layout.time - selection_time_old > SELECTION_SPEED )
 		{
-			selection_time_old = fe.layout.time
-			local dir = sign( queue_next )
-			if ( abs( queue_next + queue_load ) > cfg.slots )
+			selection_time_old = ::fe.layout.time
+			local dir = ::sign( queue_next )
+			if ( ::abs( queue_next + queue_load ) > cfg.slots )
 			{
 				local jump = queue_next + queue_load - cfg.slots * dir
-				wheel_idx = wrap( wheel_idx + jump, fe.list.size )
+				wheel_idx = ::wrap( wheel_idx + jump, ::fe.list.size )
 				queue_next -= jump
 				resync = true
 			}
@@ -216,59 +282,54 @@ function Wheel::on_tick( ttime )
 	}
 
 	// Handling audio flags
-	if ( end_navigation == true && wheel_idx == fe.layout.index && queue_load == 0 )
+	if ( end_navigation == true && wheel_idx == ::fe.layout.index && queue_load == 0 )
 	{
 		slots[selected_slot_idx].video_flags = cfg.video_flags
 		end_navigation = false
 	}
 
 	// LOADING ARTWORK
-
+	if ( velocity.get + velocity_int <= -0.5 && ( velocity.dir > 0 || cfg.speed < FRAME_TIME ))
 	{
-		if ( velocity.get + velocity_int <= -0.5 && ( velocity.dir > 0 || cfg.speed < FRAME_TIME ))
-		{
-			swap_slots( 1 )
-			velocity_int++
-			queue_load--
-			wheel_idx++
-			wheel_idx = wrap( wheel_idx, fe.list.size )
-			slots[cfg.slots - 1].video_flags = cfg.video_flags | Vid.NoAudio
-			slots[cfg.slots - 1].file_name = fe.get_art( cfg.artwork_label,
-			                                             idx2off( wheel_idx + max_idx_offset + cfg.index_offset - 0, fe.list.index ),
-			                                             0,
-			                                             cfg.video_flags & Art.ImagesOnly )
-		}
-		if ( velocity.get + velocity_int >= 0.5 && ( velocity.dir < 0 || cfg.speed < FRAME_TIME ))
-		{
-			swap_slots( -1 )
-			velocity_int--
-			queue_load++
-			wheel_idx--
-			wheel_idx = wrap( wheel_idx, fe.list.size )
-			slots[0].video_flags = cfg.video_flags | Vid.NoAudio
-			slots[0].file_name = fe.get_art( cfg.artwork_label,
-			                                             idx2off( wheel_idx - max_idx_offset + cfg.index_offset + 0, fe.list.index ),
-			                                             0,
-			                                             cfg.video_flags & Art.ImagesOnly )
-		}
+		swap_slots( 1 )
+		velocity_int++
+		queue_load--
+		wheel_idx++
+		wheel_idx = ::wrap( wheel_idx, ::fe.list.size )
+		slots[cfg.slots - 1].video_flags = cfg.video_flags | Vid.NoAudio
+		slots[cfg.slots - 1].file_name = ::fe.get_art( cfg.artwork_label,
+		                                             idx2off( wheel_idx + max_idx_offset + cfg.index_offset, ::fe.list.index ),
+		                                             0,
+		                                             cfg.video_flags & Art.ImagesOnly )
+	}
+	if ( velocity.get + velocity_int >= 0.5 && ( velocity.dir < 0 || cfg.speed < FRAME_TIME ))
+	{
+		swap_slots( -1 )
+		velocity_int--
+		queue_load++
+		wheel_idx--
+		wheel_idx = ::wrap( wheel_idx, ::fe.list.size )
+		slots[0].video_flags = cfg.video_flags | Vid.NoAudio
+		slots[0].file_name = ::fe.get_art( cfg.artwork_label,
+		                                             idx2off( wheel_idx - max_idx_offset + cfg.index_offset, ::fe.list.index ),
+		                                             0,
+		                                             cfg.video_flags & Art.ImagesOnly )
 	}
 
-
 	// SETTING PROPERTIES
-	//
 	local mix_amount = velocity.get % 1.0
 	if ( velocity.get <= 0 ) mix_amount += 1
-	local mix_idx2 = floor( 0.5 - mix_amount )
+	local mix_idx2 = ::floor( 0.5 - mix_amount )
 	local mix_idx1 = mix_idx2 + 1
 
 	// Applying interpolated layout properties to slots
-	foreach ( name, prop in cfg.layout )
+	foreach ( name, prop in layout )
 	{
 		for ( local i = 0; i < cfg.slots; i++ )
 		{
-			local idx1 = wrap( mix_idx1 + i, cfg.slots )
-			local idx2 = wrap( mix_idx2 + i, cfg.slots )
-			slots[i][name] = mix( prop[idx1], prop[idx2], mix_amount )
+			local idx1 = ::wrap( mix_idx1 + i, cfg.slots )
+			local idx2 = ::wrap( mix_idx2 + i, cfg.slots )
+			slots[i][name] = ::mix( prop[idx1], prop[idx2], mix_amount )
 
 			if ( name == "x" ) slots[i][name] += x
 			else if ( name == "y" ) slots[i][name] += y
@@ -279,17 +340,57 @@ function Wheel::on_tick( ttime )
 	}
 
 	// Center slots if origin not defined in the layout
-	if ( !( "origin_x" in cfg.layout )) foreach ( i, s in slots ) s.origin_x = s.width / 2
-	if ( !( "origin_y" in cfg.layout )) foreach ( i, s in slots ) s.origin_y = s.height / 2
+	foreach ( i, s in slots )
+	{
+		if ( !( "x" in layout )) s.x = x
+		if ( !( "y" in layout )) s.y = y
+		if ( !( "origin_x" in layout )) s.origin_x = s.width / 2
+		if ( !( "origin_y" in layout )) s.origin_y = s.height / 2
+	}
 
 	for ( local i = 0; i < cfg.slots; i++ ) slots[i].visible = slots[i].alpha
 }
 
+function Wheel::_get( idx )
+{
+	switch ( idx )
+	{
+		case "x":
+		case "y":
+		case "alpha":
+			return idx
+
+		default:
+			if ( idx in this ) return idx
+			else if ( idx in preset ) return preset[idx]
+			else if ( idx in cfg ) return cfg[idx]
+	}
+}
+
+function Wheel::_set( idx, val )
+{
+	switch ( idx )
+	{
+		case "x":
+		case "y":
+		case "alpha":
+			idx = val
+			break
+
+		default:
+			if ( idx in this ) idx = val
+			else if ( idx in preset ) preset[idx] = val
+			else if ( idx in cfg ) cfg[idx] = val
+			if ( "update" in preset ) preset.update()
+			if ( "update" in cfg ) cfg.update()
+	}
+}
+
 function Wheel::reload_slots()
 {
-	fe.list.page_size = min( cfg.slots, max( fe.list.size / 2, 1 ))
-	wheel_idx = fe.list.index
-	end_idx_old = fe.list.index
+	::fe.list.page_size = ::min( cfg.slots, ::max( ::fe.list.size / 2, 1 ))
+	wheel_idx = ::fe.list.index
+	end_idx_old = ::fe.list.index
 	end_idx_offset = 0
 	velocity_int = 0
 	velocity.set = 0.0
@@ -298,7 +399,7 @@ function Wheel::reload_slots()
 
 	for ( local i = 0; i < cfg.slots; i++ )
 	{
-		slots[i].file_name = fe.get_art( cfg.artwork_label,
+		slots[i].file_name = ::fe.get_art( cfg.artwork_label,
 		                                 i - max_idx_offset + cfg.index_offset,
 		                                 0,
 		                                 cfg.video_flags & Art.ImagesOnly )
@@ -311,8 +412,8 @@ function Wheel::reload_slots()
 
 function Wheel::idx2off( new, old )
 {
-	local positive = wrap( new - old, fe.list.size )
-	local negative = wrap( old - new, fe.list.size )
+	local positive = ::wrap( new - old, ::fe.list.size )
+	local negative = ::wrap( old - new, ::fe.list.size )
 	if ( positive > negative )
 		return -negative
 	else
@@ -325,6 +426,14 @@ function Wheel::swap_slots( dir )
 		for ( local i = 1; i < cfg.slots; i++ ) slots[i].swap( slots[i - 1] )
 	else
 		for ( local i = cfg.slots - 1; i > 0; i-- ) slots[i].swap( slots[i - 1] )
+}
+
+function Wheel::ends_with( name, string )
+{
+	if ( name.slice( name.len() - string.len(), name.len()) == string )
+		return true
+	else
+		return false
 }
 
 // Binding the wheel to fe
