@@ -1,6 +1,6 @@
 ///////////////////////////////////////////////////
 //
-// Attract-Mode Frontend - "wheel" module v1.1
+// Attract-Mode Frontend - "wheel" module v1.2
 //
 // Provides an Animated list of artwork slots
 // with fully customizable layout
@@ -22,7 +22,7 @@ fe.load_module( "config.nut" )
 
 class Wheel
 {
-	static VERSION = 1.1
+	static VERSION = 1.2
 	static PRESETS_DIR = ::fe.module_dir + "wheel-presets/"
 	static SCRIPT_DIR = ::fe.script_dir
 	static SELECTION_SPEED = ::fe.get_config_value( "selection_speed_ms" ).tointeger()
@@ -39,6 +39,7 @@ class Wheel
 	layout = null
 	surface = null
 	parent = null
+	anchor = null
 	velocity = null
 	velocity_int = null
 	slots = null
@@ -53,7 +54,6 @@ class Wheel
 	selected_slot_idx = null
 	selection_time_old = null
 	resync = null
-	mix_idx_off = null
 	sel_slot = null
 
 
@@ -89,7 +89,6 @@ class Wheel
 			cfg.layout <- {}
 			cfg.parent <- parent
 			cfg.init()
-			foreach ( k, v in cfg.layout ) if ( typeof v == "array" && v.len() == 0 ) cfg.layout[k] = ::array( cfg.slots, 0.0 )
 		}
 		else
 		{
@@ -97,39 +96,22 @@ class Wheel
 			layout = {}
 			cfg.layout <- {}
 			cfg.init()
-			foreach ( k, v in cfg.layout ) if ( typeof v == "array" && v.len() == 0 ) cfg.layout[k] = ::array( cfg.slots, 0.0 )
-
-			if ( "preset" in cfg )
-			{
-				preset = ::dofile( PRESETS_DIR + cfg.preset + ".nut", true )
-				delete cfg.preset
-				preset.layout <- {}
-				preset.parent <- parent
-				preset.init()
-				cfg.init.call( preset )
-				foreach ( k, v in preset.layout ) if ( typeof v == "array" && v.len() == 0 ) preset.layout[k] = ::array( cfg.slots, 0.0 )
-			}
 		}
 
-		// Copying array pointers from config and preset to layout table
+		if ( "preset" in cfg )
+		{
+			preset = ::dofile( PRESETS_DIR + cfg.preset + ".nut", true )
+			delete cfg.preset
+			preset.layout <- {}
+			preset.parent <- parent
+			preset.init()
+		}
+
+		// Copying preset parameters to config
 		if ( preset )
-		{
-			foreach ( k, v in preset.layout )
-			{
-				if ( !( k in layout )) layout[k] <- []
-				layout[k] = preset.layout[k]
-			}
-		}
-
-		foreach ( k, v in cfg.layout )
-		{
-			if ( !( k in layout )) layout[k] <- []
-			layout[k] = cfg.layout[k]
-		}
-
-		// First update
-		if ( "update" in preset ) preset.update()
-		if ( "update" in cfg ) cfg.update()
+			foreach ( k, v in preset )
+				if ( !( k in cfg ) && k != "layout" && typeof v != "function" )
+					cfg[k] <- preset[k]
 
 		// Parsing Wheel's properties
 		if ( "x" in cfg ) x = cfg.x else x = 0
@@ -139,6 +121,7 @@ class Wheel
 		// Parsing Wheel's config
 		if ( !("slots" in cfg )) cfg.slots <- 9
 		if ( !("speed" in cfg )) cfg.speed <- 500
+		if ( !("anchor" in cfg )) cfg.anchor <- ::Wheel.Anchor.Centre
 		if ( !("artwork_label" in cfg )) cfg.artwork_label <- "snap"
 		if ( !("video_flags" in cfg )) cfg.video_flags <- Vid.Default
 		if ( !("zorder" in cfg )) cfg.zorder <- 0
@@ -147,6 +130,34 @@ class Wheel
 		if ( !("preserve_aspect_ratio" in cfg )) cfg.preserve_aspect_ratio <- false
 		if ( !("trigger" in cfg )) cfg.trigger <- Transition.ToNewSelection
 		if ( !("preset" in cfg )) cfg.preset <- ""
+
+		// Copying updated config parameters back to preset
+		if ( preset )
+			foreach ( k, v in cfg )
+				if ( k != "layout" && typeof v != "function" )
+					preset[k] <- cfg[k]
+
+		// Copying array pointers from config and preset to master layout table
+		if ( preset )
+		{
+			foreach ( k, v in preset.layout )
+			{
+				if ( v.len() == 0 ) preset.layout[k] = ::array( cfg.slots, 0.0 )
+				if ( !( k in layout )) layout[k] <- [] // init needed?
+				layout[k] = preset.layout[k]
+			}
+		}
+
+		foreach ( k, v in cfg.layout )
+		{
+			if ( v.len() == 0 ) cfg.layout[k] = ::array( cfg.slots, 0.0 )
+			if ( !( k in layout )) layout[k] <- [] // init needed?
+			layout[k] = cfg.layout[k]
+		}
+
+		// First update
+		if ( "update" in preset ) preset.update()
+		if ( "update" in cfg ) cfg.update()
 
 		// Initializing locals
 		velocity = ::InertiaVar( 0.0, cfg.speed, 0.0 )
@@ -163,7 +174,6 @@ class Wheel
 		selected_slot_idx = max_idx_offset - cfg.index_offset
 		selection_time_old = 0
 		resync = false
-		mix_idx_off = 0
 		FRAME_TIME = 1000 / ScreenRefreshRate
 
 		// Calculating zorder array based on Wheel zorder and index_offset so the selected slot is always on top
@@ -334,18 +344,18 @@ function Wheel::on_tick( ttime )
 			if ( name == "x" ) slots[i][name] += x
 			else if ( name == "y" ) slots[i][name] += y
 			else if ( name == "alpha" ) slots[i][name] = slots[i][name] / 255.0 * alpha
-			else if ( name == "origin_x" ) slots[i][name] += slots[i].width / 2
-			else if ( name == "origin_y" ) slots[i][name] += slots[i].height / 2
+			else if ( name == "origin_x" ) slots[i][name] += slots[i].width * cfg.anchor[0]
+			else if ( name == "origin_y" ) slots[i][name] += slots[i].height * cfg.anchor[1]
 		}
 	}
 
-	// Center slots if origin not defined in the layout
+	// Center slots if origin not defined in layout
 	foreach ( i, s in slots )
 	{
 		if ( !( "x" in layout )) s.x = x
 		if ( !( "y" in layout )) s.y = y
-		if ( !( "origin_x" in layout )) s.origin_x = s.width / 2
-		if ( !( "origin_y" in layout )) s.origin_y = s.height / 2
+		if ( !( "origin_x" in layout )) s.origin_x = s.width * cfg.anchor[0]
+		if ( !( "origin_y" in layout )) s.origin_y = s.height * cfg.anchor[1]
 	}
 
 	for ( local i = 0; i < cfg.slots; i++ ) slots[i].visible = slots[i].alpha
@@ -384,6 +394,19 @@ function Wheel::_set( idx, val )
 			if ( "update" in preset ) preset.update()
 			if ( "update" in cfg ) cfg.update()
 	}
+}
+
+Wheel.Anchor <-
+{
+	Centre = [0.5,0.5]
+	Left = [0.0,0.5]
+	Right = [1.0,0.5]
+	Top = [0.5,0.0]
+	Bottom = [0.5,1.0]
+	TopLeft = [0.0,0.0]
+	TopRight = [1.0,0.0]
+	BottomLeft = [0.0,1.0]
+	BottomRight = [1.0,1.0]
 }
 
 function Wheel::reload_slots()
