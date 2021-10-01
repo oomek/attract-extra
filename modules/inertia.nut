@@ -1,7 +1,7 @@
 /*
 ################################################################################
 
-Attract-Mode Frontend - Inertia module v2.32
+Attract-Mode Frontend - Inertia module v2.34
 Adds animation to object's properties
 
 by Oomek - Radek Dutkiewicz 2021
@@ -72,7 +72,7 @@ easing_x - Available easing modes:
     Easing.OutIn
     Easing.InOut
 
-tail_x - Additional time in milliseconds for Tween.Bounce and Tween.Elastic
+tail_x - Additional time in ms for Tween.Bounce, Tween.Elastic
 
 loop_x - When set to true the animation is looped until set back to false
 
@@ -148,7 +148,7 @@ art.running         returns true if any of the properties is still animating,
 
 class InertiaClass
 {
-	static VERSION = 2.32
+	static VERSION = 2.34
 
 	Mode = {} // table with binary flags for Tweens and Easings
 	ModeName = {} // mode name look-up table
@@ -275,7 +275,7 @@ function InertiaClass::Tween( p, t )
 			local i = e
 			e *= e; e *= e
 			e = 0.1 * ( i - e ) + e
-			out = e * ::cos( t * ::PI * 1.5 )
+			out = e * ::cos( t * ::PI * ( 2.0 - e ))
 			break
 
 		case Mode.Back:
