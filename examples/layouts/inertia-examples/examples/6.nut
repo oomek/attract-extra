@@ -5,17 +5,20 @@ local h = flh/2 / 1.7777
 local x = flw - flw/4
 local y = flh/4
 
-local img = fe.add_image( "wheel.png", x, y, w, h )
+local img = fe.add_image( "assets/wheel.png", x, y, w, h )
 img.origin = Origin.Centre
 img.anchor = Anchor.Centre
 
-
+///////////////////////////////////////////////////////////
 
 img = Inertia ( img, 2000, "alpha", "rotation", "width", "height" )
 
-// set all properties
+// By just using a prefix we set all properties at once
+
 img.tween = Tween.FullSine
 img.loop = true
+
+// Now we set properties individually
 
 img.to_width = w * 1.2
 img.to_height = h * 1.2
