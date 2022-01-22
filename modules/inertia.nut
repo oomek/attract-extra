@@ -1,7 +1,7 @@
 /*
 ################################################################################
 
-Attract-Mode Frontend - Inertia module v2.35
+Attract-Mode Frontend - Inertia module v2.36
 Adds animation to object's properties
 
 by Oomek - Radek Dutkiewicz 2021
@@ -148,7 +148,7 @@ art.running         returns true if any of the properties is still animating,
 
 class InertiaClass
 {
-	static VERSION = 2.35
+	static VERSION = 2.36
 
 	Mode = {} // table with binary flags for Tweens and Easings
 	ModeName = {} // mode name look-up table
@@ -907,12 +907,12 @@ class InertiaVar extends InertiaClass
 				return null
 
 			case "loop":
-				if ( p.loop != val )
+				if ( prop.loop != val )
 				{
 					prop.loop = val
 					if ( prop.running == false )
 					{
-						prop.timer = -p.delay
+						prop.timer = -prop.delay
 						prop.running = true
 					}
 				}
