@@ -1,11 +1,16 @@
-///////////////////////////////////////////////////
-//
-// Attract-Mode Frontend - FPS Monitor Plugin v2.2
-// Radek Dutkiewicz (Oomek) 2020
-//
-///////////////////////////////////////////////////
+/*
+################################################################################
 
-class UserConfig </ help="A plugin that shows an FPS meter v2.2" />
+Attract-Mode Frontend - FPS Monitor Plugin v2.3
+Adds frame per second and frame time counters and graphs
+
+by Oomek - Radek Dutkiewicz 2022
+https://github.com/oomek/attract-extra
+
+################################################################################
+*/
+
+class UserConfig </ help="A plugin that shows an FPS and Frame Time meters and graphs v2.3" />
 {
 	</ label="Graph Size",
 		help="Set the graph size",
@@ -41,7 +46,9 @@ class UserConfig </ help="A plugin that shows an FPS meter v2.2" />
 
 class FPSMonitor
 {
+	static VERSION = 2.3
 	static FPS_ZORDER = 2147483647 // maximum signed int so it's always sitting on top
+	fps_png = null
 	fps_flw = null
 	fps_flh = null
 	fps_config = null
@@ -87,17 +94,25 @@ class FPSMonitor
 
 	constructor()
 	{
-		local png = fe.add_image( "fps_graph.png", 0, 0, 0, 0 )
-		png.subimg_width = 1
-		png.subimg_height = 1
-		png.set_rgb( 100, 255, 100 )
+		fps_config = fe.get_config()
 
+		fps_png = fe.add_image( "fps_graph.png", 0, 0, 0, 0 )
+		fps_png.subimg_width = 1
+		fps_png.subimg_height = 1
+		fps_png.set_rgb( 100, 255, 100 )
+
+		fe.add_transition_callback( this, "fps_transition" )
+		fe.add_signal_handler( this, "fps_signal" )
+		fe.add_ticks_callback( this, "fps_tick" )
+	}
+
+	function init()
+	{
 		fps_flw = fe.layout.width
 		fps_flh = fe.layout.height
 		fps_frame_time = 1000.0 / ScreenRefreshRate
 		fps_array = array( fps_array_size, 0 )
 
-		fps_config = fe.get_config()
 		fps_on_off_key=fps_config["on_off"].tolower();
 		fps_reload_key=fps_config["reload"].tolower();
 		if ( fps_config["ft_enabled"].tolower() == "yes" )
@@ -123,9 +138,6 @@ class FPSMonitor
 			default:
 				break
 		}
-
-		fe.add_signal_handler( this, "fps_signal" )
-		fe.add_ticks_callback( this, "fps_tick" )
 
 		fps_scale_x = fe.layout.width / ScreenWidth.tofloat()
 		fps_scale_y = fe.layout.height / ScreenHeight.tofloat()
@@ -161,7 +173,7 @@ class FPSMonitor
 		fps_su.zorder = FPS_ZORDER
 		fps_su.blend_mode = BlendMode.Alpha
 
-		fps_bg = fps_su.add_clone( png )
+		fps_bg = fps_su.add_clone( fps_png )
 		fps_bg.smooth = false
 		fps_bg.x = 0
 		fps_bg.y = 0
@@ -169,7 +181,7 @@ class FPSMonitor
 		fps_bg.height = fps_su.subimg_height
 		fps_bg.blend_mode = BlendMode.None
 
-		fps_line = fps_su.add_clone( png )
+		fps_line = fps_su.add_clone( fps_png )
 		fps_line.set_rgb( 100, 255, 100 )
 		fps_line.smooth = false
 		fps_line.subimg_x = 0 // graph type
@@ -211,7 +223,7 @@ class FPSMonitor
 			ft_su.zorder = FPS_ZORDER
 			ft_su.blend_mode = BlendMode.Alpha
 
-			ft_bg = ft_su.add_clone( png )
+			ft_bg = ft_su.add_clone( fps_png )
 			ft_bg.smooth = false
 			ft_bg.x = 0
 			ft_bg.y = 0
@@ -219,7 +231,7 @@ class FPSMonitor
 			ft_bg.height = ft_su.subimg_height
 			ft_bg.blend_mode = BlendMode.None
 
-			ft_line = ft_su.add_clone( png )
+			ft_line = ft_su.add_clone( fps_png )
 			ft_line.set_rgb( 100, 255, 100 )
 			ft_line.smooth = false
 			ft_line.subimg_x = 1 // graph type
@@ -243,7 +255,18 @@ class FPSMonitor
 
 			ft_array = array( ft_array_size, 0 )
 		}
-		png.visible = false
+		fps_png.visible = false
+	}
+
+	function fps_transition( ttype, var, ttime )
+	{
+		switch( ttype )
+		{
+			case Transition.StartLayout:
+				init()
+				break
+		}
+		return false
 	}
 
 	function fps_signal( signal )
