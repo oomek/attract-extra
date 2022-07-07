@@ -1,28 +1,78 @@
-///////////////////////////////////////////////////
-//
-// Attract-Mode Frontend - "wheel" module v1.2
-//
-// Provides an Animated list of artwork slots
-// with fully customizable layout
-//
-// by Oomek - Radek Dutkiewicz 2021
-//
-///////////////////////////////////////////////////
+/*
+################################################################################
 
-// TODO:
-// - WheelSlot class
-// - load by index not by offset,
-// - move idx2off to WheelSlot class
-//   to allow updating text drawables in WheelSlot class
+Attract-Mode Frontend - Wheel module v1.28
+Provides an animated artwork strip
+
+by Oomek - Radek Dutkiewicz 2022
+https://github.com/oomek/attract-extra
+
+################################################################################
 
 
-fe.load_module( "math.nut" )
-fe.load_module( "inertia.nut" )
-fe.load_module( "config.nut" )
+INITIALIZATION:
+--------------------------------------------------------------------------------
+local wheel = fe.add_wheel( preset )
+
+preset can be one of the following:
+
+> string - for example "arch-vertical"
+  which is loaded from modules/wheel-presets folder
+
+> file path - for example "my_preset.nut" that is loaded from the layout folder
+
+> table - for example my_preset defined inside the layout code as local
+
+
+PROPERTIES:
+--------------------------------------------------------------------------------
+x
+
+y
+
+alpha
+
+speed
+
+artwork_label
+
+video_flags
+
+blend_mode
+
+zorder
+
+zorder_offset
+
+index_offset
+
+preserve_aspect_ratio
+
+trigger
+
+...TODO
+
+
+EXAMPLES:
+--------------------------------------------------------------------------------
+fe.load_module("wheel.nut")
+
+local wheel = fe.add_wheel( "arch-vertical" )
+
+...TODO
+
+################################################################################
+*/
+
+
+
+fe.load_module( "math" )
+fe.load_module( "inertia" )
+fe.load_module( "config" )
 
 class Wheel
 {
-	static VERSION = 1.2
+	static VERSION = 1.28
 	static PRESETS_DIR = ::fe.module_dir + "wheel-presets/"
 	static SCRIPT_DIR = ::fe.script_dir
 	static SELECTION_SPEED = ::fe.get_config_value( "selection_speed_ms" ).tointeger()
@@ -40,8 +90,8 @@ class Wheel
 	surface = null
 	parent = null
 	anchor = null
-	velocity = null
-	velocity_int = null
+	anim = null
+	anim_int = null
 	slots = null
 	queue = null
 	queue_next = null
@@ -124,6 +174,7 @@ class Wheel
 		if ( !("anchor" in cfg )) cfg.anchor <- ::Wheel.Anchor.Centre
 		if ( !("artwork_label" in cfg )) cfg.artwork_label <- "snap"
 		if ( !("video_flags" in cfg )) cfg.video_flags <- Vid.Default
+		if ( !("blend_mode" in cfg )) cfg.blend_mode <- BlendMode.Alpha
 		if ( !("zorder" in cfg )) cfg.zorder <- 0
 		if ( !("zorder_offset" in cfg )) cfg.zorder_offset <- 0
 		if ( !("index_offset" in cfg )) cfg.index_offset <- 0
@@ -143,7 +194,7 @@ class Wheel
 			foreach ( k, v in preset.layout )
 			{
 				if ( v.len() == 0 ) preset.layout[k] = ::array( cfg.slots, 0.0 )
-				if ( !( k in layout )) layout[k] <- [] // init needed?
+				if ( !( k in layout )) layout[k] <- []
 				layout[k] = preset.layout[k]
 			}
 		}
@@ -151,7 +202,7 @@ class Wheel
 		foreach ( k, v in cfg.layout )
 		{
 			if ( v.len() == 0 ) cfg.layout[k] = ::array( cfg.slots, 0.0 )
-			if ( !( k in layout )) layout[k] <- [] // init needed?
+			if ( !( k in layout )) layout[k] <- []
 			layout[k] = cfg.layout[k]
 		}
 
@@ -160,8 +211,9 @@ class Wheel
 		if ( "update" in cfg ) cfg.update()
 
 		// Initializing locals
-		velocity = ::InertiaVar( 0.0, cfg.speed, 0.0 )
-		velocity_int = 0
+		anim = ::Inertia( 0.0, cfg.speed, 0.0 )
+		anim.mass = 1.0
+		anim_int = 0
 		slots = []
 		queue = []
 		queue_next = 0
@@ -175,11 +227,6 @@ class Wheel
 		selection_time_old = 0
 		resync = false
 		FRAME_TIME = 1000 / ScreenRefreshRate
-
-		// Calculating zorder array based on Wheel zorder and index_offset so the selected slot is always on top
-		layout.zorder <- []
-		for ( local i = -max_idx_offset; i <= max_idx_offset; i++ )
-			layout.zorder.push( max_idx_offset - ::abs( i + cfg.zorder_offset ) + cfg.zorder - 0.5 + ::abs( cfg.zorder_offset ))
 
 		// Create alpha array if not defined
 		if ( !("alpha" in layout )) layout.alpha <- ::array( cfg.slots, 255 )
@@ -195,11 +242,15 @@ class Wheel
 			s.video_flags = cfg.video_flags
 			s.preserve_aspect_ratio = cfg.preserve_aspect_ratio
 			s.mipmap = true
+			s.blend_mode = cfg.blend_mode
+			s.zorder =  max_idx_offset - ::abs( i + cfg.zorder_offset - max_idx_offset ) + cfg.zorder + ::abs( cfg.zorder_offset )
 			slots.push( s )
 		}
 
 		// To be accessed by the layout
 		sel_slot = slots[selected_slot_idx]
+		cfg.images <- []
+		cfg.images = slots
 
 		// Binding callbacks
 		::fe.add_ticks_callback( this, "on_tick" )
@@ -265,7 +316,7 @@ function Wheel::on_tick( ttime )
 	if ( queue_load == 0 && queue_next == 0 ) resync = false
 
 	if ( queue.len() > 0 )
-		if ( resync == false || (( ::sign( queue[0] ) == velocity.dir ) && ( ::sign( queue[0] ) == ::sign( queue_next ) || ( queue_next == 0 ))))
+		if ( resync == false || (( ::sign( queue[0] ) == ::sign( -anim.velocity ) ) && ( ::sign( queue[0] ) == ::sign( queue_next ) || ( queue_next == 0 ))))
 			queue_next += queue.remove(0)
 
 	if ( queue_next != 0 )
@@ -283,8 +334,8 @@ function Wheel::on_tick( ttime )
 			}
 			if ( queue_next != 0 )
 			{
-				velocity.from += dir
-				velocity_int -= dir
+				anim.from += dir
+				anim_int -= dir
 				queue_load += dir
 				queue_next -= dir
 			}
@@ -299,10 +350,10 @@ function Wheel::on_tick( ttime )
 	}
 
 	// LOADING ARTWORK
-	if ( velocity.get + velocity_int <= -0.5 && ( velocity.dir > 0 || cfg.speed < FRAME_TIME ))
+	if ( anim.get + anim_int <= -0.5 && ( anim.velocity < 0.0 || cfg.speed < FRAME_TIME ))
 	{
 		swap_slots( 1 )
-		velocity_int++
+		anim_int++
 		queue_load--
 		wheel_idx++
 		wheel_idx = ::wrap( wheel_idx, ::fe.list.size )
@@ -312,10 +363,10 @@ function Wheel::on_tick( ttime )
 		                                             0,
 		                                             cfg.video_flags & Art.ImagesOnly )
 	}
-	if ( velocity.get + velocity_int >= 0.5 && ( velocity.dir < 0 || cfg.speed < FRAME_TIME ))
+	if ( anim.get + anim_int >= 0.5 && ( anim.velocity > 0.0 || cfg.speed < FRAME_TIME ))
 	{
 		swap_slots( -1 )
-		velocity_int--
+		anim_int--
 		queue_load++
 		wheel_idx--
 		wheel_idx = ::wrap( wheel_idx, ::fe.list.size )
@@ -327,8 +378,8 @@ function Wheel::on_tick( ttime )
 	}
 
 	// SETTING PROPERTIES
-	local mix_amount = velocity.get % 1.0
-	if ( velocity.get <= 0 ) mix_amount += 1
+	local mix_amount = anim.get % 1.0
+	if ( anim.get <= 0 ) mix_amount += 1
 	local mix_idx2 = ::floor( 0.5 - mix_amount )
 	local mix_idx1 = mix_idx2 + 1
 
@@ -348,6 +399,8 @@ function Wheel::on_tick( ttime )
 			else if ( name == "origin_y" ) slots[i][name] += slots[i].height * cfg.anchor[1]
 		}
 	}
+
+	// sel_slot.alpha = 255
 
 	// Center slots if origin not defined in layout
 	foreach ( i, s in slots )
@@ -370,6 +423,9 @@ function Wheel::_get( idx )
 		case "alpha":
 			return idx
 
+		case "spinning":
+			return anim.get != 0
+
 		default:
 			if ( idx in this ) return idx
 			else if ( idx in preset ) return preset[idx]
@@ -385,6 +441,21 @@ function Wheel::_set( idx, val )
 		case "y":
 		case "alpha":
 			idx = val
+			break
+
+		case "speed":
+			cfg.speed = val
+			anim.time = val
+			break
+
+		case "preserve_aspect_ratio":
+			foreach( s in slots ) s[idx] = val
+			break
+
+		case "zorder":
+			cfg.zorder = val
+			foreach( i, s in slots )
+				s.zorder =  max_idx_offset - ::abs( i + cfg.zorder_offset - max_idx_offset ) + cfg.zorder + ::abs( cfg.zorder_offset )
 			break
 
 		default:
@@ -415,8 +486,8 @@ function Wheel::reload_slots()
 	wheel_idx = ::fe.list.index
 	end_idx_old = ::fe.list.index
 	end_idx_offset = 0
-	velocity_int = 0
-	velocity.set = 0.0
+	anim_int = 0
+	anim.set = 0.0
 	queue_next = 0
 	queue_load = 0
 
