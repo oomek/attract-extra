@@ -1,7 +1,7 @@
 /*
 ################################################################################
 
-Attract-Mode Frontend - Grid module v0.5
+Attract-Mode Frontend - Grid module v0.55
 Provides animated artwork grid
 
 2022 (c) Radek Dutkiewicz
@@ -15,7 +15,7 @@ fe.load_module( "inertia" )
 
 class Grid
 {
-	static VERSION = 0.5
+	static VERSION = 0.55
 	static SCRIPT_DIR = ::fe.script_dir
 
     // properties
@@ -118,8 +118,8 @@ class Grid
         video.mipmap = false
 
         video = Inertia( video, 500, "alpha" )
-        video.delay = 500
-        video.tween = Tween.Linear
+        video.delay_alpha = 500
+        video.tween_alpha = Tween.Linear
         video.shader = fe.add_shader( Shader.Fragment, "crop.frag" )
 
         fe.add_transition_callback( this, "grid_on_transition" )

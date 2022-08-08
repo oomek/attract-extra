@@ -1,7 +1,7 @@
 /*
 ################################################################################
 
-Attract-Mode Plus Frontend - Grid layout v0.7
+Attract-Mode Plus Frontend - Grid layout v0.75
 
 2022 (c) Radek Dutkiewicz
 https://github.com/oomek/attract-extra
@@ -11,25 +11,25 @@ https://github.com/oomek/attract-extra
 
 class UserConfig </ help="Grid layout with custom filters menu" />
 {
-    </ label="Columns", help="Number of columns to display", options="1,2,3,4,5", order=1 />
+    </ label="Columns", help="Number of columns to display", options="1,2,3,4,5", per_display="true", order=1 />
     columns = "3"
 
-	</ label="Rows", help="Number of rows to display", options="1,2,3,4,5", order=2 />
+	</ label="Rows", help="Number of rows to display", options="1,2,3,4,5", per_display="true", order=2 />
     rows = "3"
 
-	</ label="Pixel Font", help="Specifies when to use pixel style font.", options="Always,Never,Auto", order=3 />
+	</ label="Pixel Font", help="Specifies when to use pixel style font.", options="Always,Never,Auto", per_display="true", order=3 />
     pixel_font = "Auto"
 
-	</ label="Selected Game", help="Specifies what to show in the selected game slot.", options="Snap,Video,Video Muted", order=4 />
+	</ label="Selected Game", help="Specifies what to show in the selected game slot.", options="Snap,Video,Video Muted", per_display="true", order=4 />
     video_flags = "Video"
 
-	</ label="Artwork Scale", help="Set scaling mode inside the artwork slots.", options="Stretch,Fit,Fill", order=5 />
+	</ label="Artwork Scale", help="Set scaling mode inside the artwork slots.", options="Stretch,Fit,Fill", per_display="true", order=5 />
     scale_mode = "Stretch"
 
-	</ label="Aspect Ratio", help="Set artwork's aspect ratio type.", options="Keep,Force 4:3", order=6 />
+	</ label="Aspect Ratio", help="Set artwork's aspect ratio type.", options="Keep,Force 4:3", per_display="true", order=6 />
     aspect_ratio = "Keep"
 
-	</ label="Enable Sounds", help="Enables or disables in-built sounds.", options="Yes,No", order=7 />
+	</ label="Enable Sounds", help="Enables or disables in-built sounds.", options="Yes,No", per_display="true", order=7 />
     sounds = "Yes"
 }
 cfg <- fe.get_config()
@@ -53,7 +53,7 @@ local fls = flb > 480.0 ? flb / 240.0 : round( flb / 240.0 )
 // Clamp scale to 1.0
 fls = fls > 1.0 ? fls : 1.0
 
-local FONT = "Barlow.ttf"
+local FONT = "fonts/Barlow.ttf"
 local FONT_SIZE = fls * 12
 
 local UI_SOUND_NAV = fe.add_sound( "sounds/amp_nav.wav" )
@@ -66,7 +66,7 @@ switch ( cfg["pixel_font"] )
 {
     case "Always":
         FONT_SIZE = round(fls) * 11
-        FONT = "Attract.ttf"
+        FONT = "fonts/Attract.ttf"
         break
 
     case "Never":
@@ -76,7 +76,7 @@ switch ( cfg["pixel_font"] )
     if ( fls <= 2.0 )
     {
         FONT_SIZE = fls * 11
-        FONT = "Attract.ttf"
+        FONT = "fonts/Attract.ttf"
     }
 }
 
@@ -248,9 +248,9 @@ clones_surface = Inertia( clones_surface, 300, "x" )
 
 // Grid selector color cycle
 grid.selector = Inertia( grid.selector, 3000, "outline_red", "outline_green", "outline_blue" )
-grid.selector.tween = Tween.FullSine
-grid.selector.loop = true
-grid.selector.to = 100
+grid.selector.tween_all = Tween.FullSine
+grid.selector.loop_all = true
+grid.selector.to_all = 100
 grid.selector.delay_outline_green = -1000
 grid.selector.delay_outline_blue = -2000
 
