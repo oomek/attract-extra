@@ -18,12 +18,12 @@ txt1 = Inertia( txt1, 1200, "x" )
 txt2 = Inertia( txt2, 1200, "x" )
 txt3 = Inertia( txt3, 1200, "x" )
 
-txt1.tween = Tween.Back
-txt2.tween = Tween.Back
-txt3.tween = Tween.Back
+txt1.tween_x = Tween.Back
+txt2.tween_x = Tween.Back
+txt3.tween_x = Tween.Back
 
-txt2.delay = 100
-txt3.delay = 200
+txt2.delay_x = 100
+txt3.delay_x = 200
 
 fe.add_transition_callback( "on_transition" )
 function on_transition( ttype, var, ttime )

@@ -6,9 +6,10 @@ txt.char_size = flh/16
 ///////////////////////////////////////////////////////////
 
 txt = Inertia( txt, 1500, "red", "green", "blue" )
-txt.tween = Tween.FullSine
-txt.loop = true
-txt.to = 150
+txt.tween_all = Tween.FullSine
+txt.loop_all = true
+txt.set_all = 150
+txt.to_all = 255
 
 // Negative delay starts tween from a given offset in ms.
 // In this case to make sines for each colour not overlapping.

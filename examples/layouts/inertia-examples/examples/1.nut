@@ -25,9 +25,9 @@ img3 = Inertia( img3, 1000, "y" )
 // and not resulting in abrupt accelaration changes.
 // Extensively used in the Wheel module.
 
-img1.mass = 1.00
-img2.mass = 0.66
-img3.mass = 0.33
+img1.mass_y = 1.00
+img2.mass_y = 0.66
+img3.mass_y = 0.33
 
 fe.add_transition_callback( "on_transition" )
 function on_transition( ttype, var, ttime )

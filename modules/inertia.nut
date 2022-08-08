@@ -1,7 +1,7 @@
 /*
 ################################################################################
 
-Attract-Mode Frontend - Inertia module v2.38
+Attract-Mode Frontend - Inertia module v2.40
 Adds animation to object's properties
 
 by Oomek - Radek Dutkiewicz 2021
@@ -87,7 +87,7 @@ EXAMPLE 1:
 ----------
 art = Inertia( art, 500, "width", "height" )
 
-art.tween = Tween.Linear
+art.tween_all = Tween.Linear
 
 is equivalent to:
 
@@ -98,7 +98,7 @@ EXAMPLE 2:
 ----------
 art = Inertia( art, 500, "red", "green", "blue" )
 
-art.set = 200
+art.set_all = 200
 
 is equivalent to:
 
@@ -110,7 +110,7 @@ EXAMPLE 3:
 ----------
 art = Inertia( art, 500, "red", "green", "blue" )
 
-art.to = 200
+art.to_all = 200
 
 is equivalent to:
 
@@ -148,7 +148,7 @@ art.running         returns true if any of the properties is still animating,
 
 class InertiaClass
 {
-	static VERSION = 2.38
+	static VERSION = 2.40
 
 	Mode = {} // table with binary flags for Tweens and Easings
 	ModeName = {} // mode name look-up table
@@ -523,8 +523,8 @@ class InertiaObj extends InertiaClass
 		if ( index == null )
 		{
 			// Property is a single word
-			prefix = idx
-			properties = props
+			object[idx] = val
+			return null
 		}
 		else
 		{
@@ -532,14 +532,22 @@ class InertiaObj extends InertiaClass
 			prefix = idx.slice( 0, index )
 			local p_name = idx.slice( index + 1 )
 
-			if ( !( p_name in props ))
+			if ( p_name == "all" )
+			{
+				// Set all properties with inertia assigned
+				properties = props
+			}
+			else if ( !( p_name in props ))
 			{
 				// It's a multi word object's property
 				object[idx] = val
 				return null
 			}
-
-			properties[p_name] <- props[p_name]
+			else
+			{
+				// Set single property
+				properties[p_name] <- props[p_name]
+			}
 		}
 
 		switch( prefix )

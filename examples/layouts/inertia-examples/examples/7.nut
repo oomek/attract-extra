@@ -13,12 +13,12 @@ img.anchor = Anchor.Centre
 
 img = Inertia ( img, 500, "x", "skew_x" )
 
-// By just using a prefix we set all properties at once
+// By using sufix 'all' we set all properties at once
 
-img.tween = Tween.Elastic
-img.tail = 1500
+img.tween_all = Tween.Elastic
+img.tail_all = 1500
 
-// Now we set properties individually
+// Then we set properties individually
 
 img.delay_skew_x = 100
 img.skew_x = -w

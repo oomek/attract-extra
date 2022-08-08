@@ -13,13 +13,13 @@ img.anchor = Anchor.Centre
 
 img = Inertia ( img, 500, "y", "width", "height" )
 
-// By just using a prefix we set all properties at once
+// By using sufix 'all' we set all properties at once
 
-img.tween = Tween.Elastic
-img.loop = false
-img.tail = 1500
+img.tween_all = Tween.Elastic
+img.loop_all = false
+img.tail_all = 1500
 
-// Now we set properties individually
+// Then we set properties individually
 
 img.width = w / 2.0
 img.to_width = w

@@ -13,12 +13,12 @@ img.anchor = Anchor.Centre
 
 img = Inertia ( img, 2000, "alpha", "rotation", "width", "height" )
 
-// By just using a prefix we set all properties at once
+// By using sufix 'all' we set all properties at once
 
-img.tween = Tween.FullSine
-img.loop = true
+img.tween_all = Tween.FullSine
+img.loop_all = true
 
-// Now we set properties individually
+// Then we set properties individually
 
 img.to_width = w * 1.2
 img.to_height = h * 1.2
