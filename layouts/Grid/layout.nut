@@ -14,22 +14,22 @@ class UserConfig </ help="Grid layout with custom filters menu" />
     </ label="Columns", help="Number of columns to display", options="1,2,3,4,5", per_display="true", order=1 />
     columns = "3"
 
-	</ label="Rows", help="Number of rows to display", options="1,2,3,4,5", per_display="true", order=2 />
+    </ label="Rows", help="Number of rows to display", options="1,2,3,4,5", per_display="true", order=2 />
     rows = "3"
 
-	</ label="Pixel Font", help="Specifies when to use pixel style font.", options="Always,Never,Auto", per_display="true", order=3 />
+    </ label="Pixel Font", help="Specifies when to use pixel style font.", options="Always,Never,Auto", per_display="true", order=3 />
     pixel_font = "Auto"
 
-	</ label="Selected Game", help="Specifies what to show in the selected game slot.", options="Snap,Video,Video Muted", per_display="true", order=4 />
+    </ label="Selected Game", help="Specifies what to show in the selected game slot.", options="Snap,Video,Video Muted", per_display="true", order=4 />
     video_flags = "Video"
 
-	</ label="Artwork Scale", help="Set scaling mode inside the artwork slots.", options="Stretch,Fit,Fill", per_display="true", order=5 />
+    </ label="Artwork Scale", help="Set scaling mode inside the artwork slots.", options="Stretch,Fit,Fill", per_display="true", order=5 />
     scale_mode = "Stretch"
 
-	</ label="Aspect Ratio", help="Set artwork's aspect ratio type.", options="Keep,Force 4:3", per_display="true", order=6 />
+    </ label="Aspect Ratio", help="Set artwork's aspect ratio type.", options="Keep,Force 4:3", per_display="true", order=6 />
     aspect_ratio = "Keep"
 
-	</ label="Enable Sounds", help="Enables or disables in-built sounds.", options="Yes,No", per_display="true", order=7 />
+    </ label="Enable Sounds", help="Enables or disables in-built sounds.", options="Yes,No", per_display="true", order=7 />
     sounds = "Yes"
 }
 cfg <- fe.get_config()

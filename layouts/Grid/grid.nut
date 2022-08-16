@@ -15,22 +15,22 @@ fe.load_module( "inertia" )
 
 class Grid
 {
-	static VERSION = 0.55
-	static SCRIPT_DIR = ::fe.script_dir
+    static VERSION = 0.55
+    static SCRIPT_DIR = ::fe.script_dir
 
     // properties
     parent = null
     slots = null
     frames = null
     video = null
-	x = null
-	y = null
+    x = null
+    y = null
     width = null
     height = null
     slot_width = null
     slot_height = null
     spacing = null
-	alpha = null
+    alpha = null
     columns = null
     rows = null
     selector = null
@@ -46,26 +46,26 @@ class Grid
     sel_zoom = null
     m_outline = null
 
-	constructor(...)
-	{
+    constructor(...)
+    {
 
         // x, y, width, height, columns, rows, spacing, surface
         if ( vargv.len() == 7 || vargv.len() == 8 )
-		{
-			spacing = vargv[6]
-			x = vargv[0] + spacing
-			y = vargv[1] + spacing
-			width = vargv[2] - spacing * 2.0
-			height = vargv[3] - spacing * 2.0
-			columns = vargv[4]
-			rows = vargv[5]
-			parent = ::fe
+        {
+            spacing = vargv[6]
+            x = vargv[0] + spacing
+            y = vargv[1] + spacing
+            width = vargv[2] - spacing * 2.0
+            height = vargv[3] - spacing * 2.0
+            columns = vargv[4]
+            rows = vargv[5]
+            parent = ::fe
 
             if ( vargv.len() == 8 )
                 parent = vargv[7]
-		}
-		else
-			throw "add_grid: Wrong number of parameters\n"
+        }
+        else
+            throw "add_grid: Wrong number of parameters\n"
 
         slots = []
         frames = []
@@ -392,24 +392,24 @@ function Grid::update_shaders()
 
 Grid.Dir <-
 {
-	None = 0
-	Up = 1
-	Down = 2
-	Left = 3
-	Right = 4
+    None = 0
+    Up = 1
+    Down = 2
+    Left = 3
+    Right = 4
 }
 
 Grid.Scale <-
 {
-	Stretch = 0
-	Fit = 1
-	Fill = 2
+    Stretch = 0
+    Fit = 1
+    Fill = 2
 }
 
 Grid.Aspect <-
 {
-	Keep = 0
-	Force = 1
+    Keep = 0
+    Force = 1
 }
 
 fe.add_grid <- Grid
