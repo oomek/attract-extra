@@ -1,7 +1,7 @@
 /*
 ################################################################################
 
-Attract-Mode Frontend - PowerOptions Plugin v1.0
+Attract-Mode Frontend - PowerOptions Plugin v1.01
 
 by Oomek - Radek Dutkiewicz 2023
 https://github.com/oomek/attract-extra
@@ -9,11 +9,11 @@ https://github.com/oomek/attract-extra
 ################################################################################
 */
 
-class UserConfig </ help="Power Options v1.0" /> {}
+class UserConfig </ help="Power Options v1.01" /> {}
 
 class PowerOptions
 {
-	static VERSION = 1.0
+	static VERSION = 1.01
 	commands = null
 
 	constructor()
@@ -102,6 +102,7 @@ class PowerOptions
 		switch ( sig )
 		{
 			case "exit":
+				if ( ScreenSaverActive ) return false
 				show_dialog()
 				return true
 
