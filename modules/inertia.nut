@@ -1,10 +1,10 @@
 /*
 ################################################################################
 
-Attract-Mode Frontend - Inertia module v2.40
+Attract-Mode Frontend - Inertia module v2.42
 Adds animation to object's properties
 
-by Oomek - Radek Dutkiewicz 2021
+by Oomek - Radek Dutkiewicz 2023
 https://github.com/oomek/attract-extra
 
 ################################################################################
@@ -62,6 +62,8 @@ tween_x - Available tween modes:
     Tween.QuartSine - or Tween.Sine for compatibility
     Tween.HalfSine  - Easing.Out only
 	Tween.FullSine  - Easing.Out only
+	Tween.CircleX   - Easing.Out only
+	Tween.CircleY   - Easing.Out only
     Tween.Bounce    - Easing.Out only
     Tween.Elastic   - Easing.Out only
 
@@ -77,6 +79,8 @@ tail_x - Additional time in ms for Tween.Bounce, Tween.Elastic
 loop_x - When set to true the animation is looped until set back to false
 
 delay_x - Delay before the animation starts in milliseconds
+
+phase_x - Phase offset for Tween.FullSine, CircleX and CircleY in 0.0 - 1.0 range
 
 
 
@@ -169,6 +173,8 @@ Tween <-
 	QuartSine = "quartsine",
 	HalfSine = "quartsine",
 	FullSine = "fullsine",
+	CircleX = "circlex",
+	CircleY = "circley",
 	Expo = "expo",
 	Circle = "circle",
 	Elastic = "elastic",
@@ -202,6 +208,7 @@ class InertiaClass.Property
 	inertia = null
 	loop = null
 	delay = null
+	phase = null
 
 	buffer = null
 	coeff = null
@@ -252,7 +259,15 @@ function InertiaClass::Tween( p, t )
 			break
 
 		case Mode.FullSine:
-			out = ::cos( t * ::PI * 2.0 ) * 0.5 + 0.5
+			out = ::cos( ::PI * 2.0 * ( t + p.phase )) * 0.5 + 0.5
+			break
+
+		case Mode.CircleX:
+			out = ::cos( ::PI * 2.0 * ( t + p.phase )) * 0.5 + 0.5 - ::cos( ::PI * 2.0 * ( p.phase )) * 0.5 + 0.5
+			break
+
+		case Mode.CircleY:
+			out = ::sin( ::PI * 2.0 * ( t + p.phase )) * 0.5 + 0.5 - ::sin( ::PI * 2.0 * ( p.phase )) * 0.5 + 0.5
 			break
 
 		case Mode.Inertia:
@@ -360,6 +375,8 @@ function InertiaClass::Initialize()
 		::Tween.QuartSine <- "quartsine"
 		::Tween.HalfSine <- "halfsine"
 		::Tween.FullSine <- "fullsine"
+		::Tween.CircleX <- "circlex"
+		::Tween.CircleY <- "circley"
 	}
 
 	local shift = 0
@@ -386,7 +403,7 @@ function InertiaClass::Initialize()
 		}
 
 		// Constructs a bitmask for Tweens that only support Easing.Out mode
-		Mask.OutOnly <- Mode.Inertia | Mode.Bounce | Mode.Elastic | Mode.HalfSine | Mode.FullSine
+		Mask.OutOnly <- Mode.Inertia | Mode.Bounce | Mode.Elastic | Mode.HalfSine | Mode.FullSine | Mode.CircleX | Mode.CircleY
 	}
 }
 
@@ -402,8 +419,8 @@ function InertiaClass::Compute( prop )
 	// Tween has finished
 	if ( prop.timer > prop.time + tail && !prop.loop )
 	{
-		 // Tween.FullSine is the only tween that cycles back to its initial position
-		if ( prop.mode & Mode.FullSine ) out = prop.from
+		// These tweens cycle back to the initial position
+		if ( prop.mode & ( Mode.FullSine | Mode.CircleX | Mode.CircleY )) out = prop.from
 		else out = prop.to
 		prop.running = false
 	}
@@ -455,6 +472,7 @@ class InertiaObj extends InertiaClass
 			prop.velocity = 0.0
 			prop.loop = false
 			prop.delay = 0.0
+			prop.phase = 0.0
 
 			prop.buffer = ::array( 3, prop.pos )
 			SetSpeed( prop, prop.time )
@@ -683,6 +701,12 @@ class InertiaObj extends InertiaClass
 					}
 				}
 				return null
+
+			case "phase":
+				foreach( p in properties )
+					if ( p.phase != val )
+						p.phase = val
+				return null
 		}
 
 		// It's a fe drawable's property
@@ -738,6 +762,9 @@ class InertiaObj extends InertiaClass
 
 				case "delay":
 					return props[p_name].delay
+
+				case "phase":
+					return props[p_name].phase
 
 				case "velocity":
 					return props[p_name].velocity
@@ -824,6 +851,7 @@ class InertiaVar extends InertiaClass
 		prop.velocity = 0.0
 		prop.loop = false
 		prop.delay = 0.0
+		prop.phase = 0.0
 
 		prop.buffer = ::array( 3, _val )
 		SetSpeed( prop, prop.time )
@@ -934,6 +962,10 @@ class InertiaVar extends InertiaClass
 				prop.timer = -prop.delay
 				return null
 
+			case "phase":
+				prop.phase = val
+				return null
+
 			case "set":
 				if ( prop.running == true || val != prop.inertia )
 				{
@@ -982,6 +1014,9 @@ class InertiaVar extends InertiaClass
 
 			case "delay":
 				return prop.delay
+
+			case "phase":
+				return prop.phase
 
 			case "velocity":
 				return prop.velocity
