@@ -1,10 +1,10 @@
 /*
 ################################################################################
 
-Attract-Mode Frontend - Grid module v0.55
+Attract-Mode Frontend - Grid module v0.6
 Provides animated artwork grid
 
-2022 (c) Radek Dutkiewicz
+2024 (c) Radek Dutkiewicz
 https://github.com/oomek/attract-extra
 
 ################################################################################
@@ -204,12 +204,14 @@ function Grid::grid_on_signal( sig )
             return true
 
         case "left":
+            if ( sel_pos.x == 0 ) return true
             direction = Dir.Left
             zoom.set = 0.0
             fe.signal("prev_game")
             return true
 
         case "right":
+            if ( sel_pos.x == columns - 1 ) return true
             direction = Dir.Right
             zoom.set = 0.0
             fe.signal("next_game")

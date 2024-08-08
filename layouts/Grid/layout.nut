@@ -1,9 +1,9 @@
 /*
 ################################################################################
 
-Attract-Mode Plus Frontend - Grid layout v0.75
+Attract-Mode Plus Frontend - Grid layout v0.8
 
-2022 (c) Radek Dutkiewicz
+2024 (c) Radek Dutkiewicz
 https://github.com/oomek/attract-extra
 
 ################################################################################
@@ -34,7 +34,7 @@ class UserConfig </ help="Grid layout with custom filters menu" />
 }
 cfg <- fe.get_config()
 
-
+fe.load_module( "math" )
 fe.do_nut( "grid.nut" )
 fe.load_module( "inertia" )
 
@@ -106,6 +106,9 @@ local grid_surface = fe.add_surface( flw, flh )
 
 local grid_bg = grid_surface.add_rectangle( 0, header_height, grid_surface.width, grid_surface.height - header_height * 2.0 )
       grid_bg.set_rgb( 30, 38, 60 )
+
+// Call this function before adding the grid to ensure that the sidebar signal callback has the highest priority
+fe.add_signal_handler( "on_signal" )
 
 local grid = fe.add_grid( 0, header_height, flw, flh - header_height * 2.0 , cfg["columns"].tointeger(), cfg["rows"].tointeger(), grid_margin, grid_surface )
       grid.outline = fls * 2.0
@@ -336,6 +339,7 @@ function on_transition( ttype, var, ttime )
 }
 
 
+// Need to call it again here to preserve the compatibility with AM+ v3.0.7
 fe.add_signal_handler( "on_signal" )
 function on_signal( sig )
 {
