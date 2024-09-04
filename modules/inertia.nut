@@ -1,7 +1,7 @@
 /*
 ################################################################################
 
-Attract-Mode Frontend - Inertia module v2.42
+Attract-Mode Frontend - Inertia module v2.45
 Adds animation to object's properties
 
 by Oomek - Radek Dutkiewicz 2023
@@ -66,6 +66,7 @@ tween_x - Available tween modes:
 	Tween.CircleY   - Easing.Out only
     Tween.Bounce    - Easing.Out only
     Tween.Elastic   - Easing.Out only
+    Tween.Jump      - Easing.Out only
 
 easing_x - Available easing modes:
 
@@ -152,7 +153,7 @@ art.running         returns true if any of the properties is still animating,
 
 class InertiaClass
 {
-	static VERSION = 2.40
+	static VERSION = 2.45
 
 	Mode = {} // table with binary flags for Tweens and Easings
 	ModeName = {} // mode name look-up table
@@ -170,16 +171,18 @@ Tween <-
 	Quart = "quart",
 	Quint = "quint",
 	Sine = "sine",
+	Cosine = "cosine",
 	QuartSine = "quartsine",
-	HalfSine = "quartsine",
-	FullSine = "fullsine",
+	HalfSine = "halfsine",
+	FullSine = "fullsine", // TODO: rotation=0; to_rotation=60 not working, investigate
 	CircleX = "circlex",
 	CircleY = "circley",
 	Expo = "expo",
 	Circle = "circle",
 	Elastic = "elastic",
 	Back = "back",
-	Bounce = "bounce"
+	Bounce = "bounce",
+	Jump = "jump"
 }
 
 // Preserved compatibility with Animate module
@@ -254,6 +257,10 @@ function InertiaClass::Tween( p, t )
 			out = 1.0 - ::sin( t * ::PI * 0.5 )
 			break
 
+		case Mode.Cosine:
+			out = ::cos( t * ::PI * 0.5 )
+			break
+
 		case Mode.HalfSine:
 			out = ::cos( t * ::PI ) * 0.5 + 0.5
 			break
@@ -306,6 +313,11 @@ function InertiaClass::Tween( p, t )
 			d = ::floor( ::log( d ) / ::log( n ))
 			d = ::pow( n, d.tointeger() )
 			out = -( d * k - k + t - 1.0 ) * ( d * k + d * 2.0 - k + t - 1.0 )
+			break
+
+		case Mode.Jump:
+			t = (( t + p.phase ) % 1.0 ) * 2.0 - 1.0
+			out = t * t
 			break
 	}
 
@@ -369,14 +381,16 @@ function InertiaClass::SetSpeed( prop, time )
 function InertiaClass::Initialize()
 {
 	// Recreates Inertia speciffic Tweens in case the table was overriden by the Animate module
-	if ( !( "inertia" in ::Tween ))
+	if ( !( "Inertia" in ::Tween ))
 	{
 		::Tween.Inertia <- "inertia"
 		::Tween.QuartSine <- "quartsine"
+		::Tween.Cosine <- "cosine"
 		::Tween.HalfSine <- "halfsine"
 		::Tween.FullSine <- "fullsine"
 		::Tween.CircleX <- "circlex"
 		::Tween.CircleY <- "circley"
+		::Tween.Jump <- "jump"
 	}
 
 	local shift = 0
@@ -403,7 +417,7 @@ function InertiaClass::Initialize()
 		}
 
 		// Constructs a bitmask for Tweens that only support Easing.Out mode
-		Mask.OutOnly <- Mode.Inertia | Mode.Bounce | Mode.Elastic | Mode.HalfSine | Mode.FullSine | Mode.CircleX | Mode.CircleY
+		Mask.OutOnly <- Mode.Inertia | Mode.Bounce | Mode.Elastic | Mode.HalfSine | Mode.FullSine | Mode.CircleX | Mode.CircleY | Mode.Jump
 	}
 }
 
@@ -420,7 +434,7 @@ function InertiaClass::Compute( prop )
 	if ( prop.timer > prop.time + tail && !prop.loop )
 	{
 		// These tweens cycle back to the initial position
-		if ( prop.mode & ( Mode.FullSine | Mode.CircleX | Mode.CircleY )) out = prop.from
+		if ( prop.mode & ( Mode.FullSine | Mode.CircleX | Mode.CircleY | Mode.Jump )) out = prop.from
 		else out = prop.to
 		prop.running = false
 	}
