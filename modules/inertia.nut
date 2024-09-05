@@ -1,7 +1,7 @@
 /*
 ################################################################################
 
-Attract-Mode Frontend - Inertia module v2.45
+Attract-Mode Frontend - Inertia module v2.46
 Adds animation to object's properties
 
 by Oomek - Radek Dutkiewicz 2023
@@ -153,7 +153,7 @@ art.running         returns true if any of the properties is still animating,
 
 class InertiaClass
 {
-	static VERSION = 2.45
+	static VERSION = 2.46
 
 	Mode = {} // table with binary flags for Tweens and Easings
 	ModeName = {} // mode name look-up table
@@ -434,7 +434,11 @@ function InertiaClass::Compute( prop )
 	if ( prop.timer > prop.time + tail && !prop.loop )
 	{
 		// These tweens cycle back to the initial position
-		if ( prop.mode & ( Mode.FullSine | Mode.CircleX | Mode.CircleY | Mode.Jump )) out = prop.from
+		if ( prop.mode & ( Mode.FullSine | Mode.CircleX | Mode.CircleY | Mode.Jump ))
+		{
+			prop.to = prop.from
+			out = prop.from
+		}
 		else out = prop.to
 		prop.running = false
 	}
