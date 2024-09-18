@@ -1,7 +1,7 @@
 /*
 ################################################################################
 
-Attract-Mode Frontend - Math module v1.15
+Attract-Mode Frontend - Math module v1.2
 Adds additional math functions
 
 by Oomek - Radek Dutkiewicz 2021
@@ -51,3 +51,7 @@ https://github.com/oomek/attract-extra
 ::wrap   <- function( x, max ) { while ( x < 0 ) { x += max };
                                  while ( x >= max ) { x -= max };
                                  return x }
+
+// Optimized modulo with correct handling of negative numbers and 0 max
+::modulo <- function( v, m ) { return m ? (v % m + m) % m : 0 }
+
