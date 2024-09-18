@@ -1,7 +1,7 @@
 /*
 ################################################################################
 
-Attract-Mode Plus Frontend - Grid layout v0.8
+Attract-Mode Plus Frontend - Grid layout v1.0
 
 2024 (c) Radek Dutkiewicz
 https://github.com/oomek/attract-extra
@@ -108,7 +108,7 @@ local grid_bg = grid_surface.add_rectangle( 0, header_height, grid_surface.width
       grid_bg.set_rgb( 30, 38, 60 )
 
 // Call this function before adding the grid to ensure that the sidebar signal callback has the highest priority
-fe.add_signal_handler( "on_signal" )
+if ( FeVersionNum > 307 )fe.add_signal_handler( "on_signal" )
 
 local grid = fe.add_grid( 0, header_height, flw, flh - header_height * 2.0 , cfg["columns"].tointeger(), cfg["rows"].tointeger(), grid_margin, grid_surface )
       grid.outline = fls * 2.0
@@ -160,6 +160,13 @@ local clones_surface = fe.add_surface( flw, flh )
 local clones_bg = clones_surface.add_rectangle( 0, header_height, clones_surface.width, clones_surface.height - header_height * 2.0 )
       clones_bg.set_rgb( 30, 38, 60 )
 
+local clones_snap = clones_surface.add_clone( grid.video )
+      clones_snap.set_pos( 0, header_height, clones_surface.width, clones_surface.height - header_height * 2.0 )
+      clones_snap.shader = fe.add_shader( Shader.Empty )
+
+local clones_gradient = clones_surface.add_image( "images/gradient.png", 0, header_height, clones_surface.width, clones_surface.height - header_height * 2.0 )
+      clones_gradient.blend_mode = BlendMode.Premultiplied
+
 local clones_list = clones_surface.add_listbox( 0, header_height, clones_surface.width, clones_surface.height - header_height * 2.0 )
       clones_list.font = FONT
       clones_list.char_size = FONT_SIZE
@@ -169,9 +176,9 @@ local clones_list = clones_surface.add_listbox( 0, header_height, clones_surface
       clones_list.selbg_alpha = 0
       clones_list.set_sel_rgb( 255, 255, 255 )
 
-local clones_selector = clones_surface.add_rectangle( 0, flh / 2.0 - flh / 22.0, flw, flh / 11.0 )
+local clones_selector = clones_surface.add_rectangle( grid_margin / 2, floor( flh / 2.0 - flh / 22.0 ), flw - grid_margin, ceil(( flh - flh / 11.0 ) / 11.0 ))
       clones_selector.alpha = 0
-      clones_selector.outline = -fls * 2.0
+      clones_selector.outline = -floor( grid_margin / 2.0 )
 
 
 // List entry
@@ -214,14 +221,14 @@ foreach ( i, f in fe.filters )
     filters.push( obj )
 }
 
-local filter_selector = fe.add_rectangle( 0, 0, 0, 0 ) // 0 size, set later
+local filter_selector = fe.add_rectangle( 0, 0, 0, 0 )
       filter_selector.outline = fls * -2.0
       filter_selector.alpha = 0
       filter_selector.visible = false
 
 
 // Favourites stars
-local star = grid_surface.add_image( "images/star192.png" )
+local star = grid_surface.add_image( "images/star128.png" )
       star.mipmap = true
       star.anchor = Anchor.TopRight
 
@@ -231,8 +238,8 @@ foreach ( s in grid.slots )
     local obj = grid_surface.add_clone( star )
     obj.x = s.width + s.x
     obj.y = s.y
-    obj.width = max( fls * 12.0, 21 )
-    obj.height = max( fls * 12.0, 21 )
+    obj.width = max( fls * 10.0, 16 )
+    obj.height = max( fls * 10.0, 16 )
     stars.push( obj )
 }
 star.visible = false
@@ -264,7 +271,10 @@ local filters_dy = Inertia( 0.0, 300 )
 function update_stars()
 {
     foreach ( i, s in stars )
-        s.visible = fe.game_info( Info.Favourite, grid.slots[i].index_offset ) == "1" ? true : false
+        if ( fe.game_info( Info.Favourite, grid.slots[i].index_offset ) == "1" && grid.slots[i].visible )
+            s.visible = true
+        else
+            s.visible = false
 }
 
 
@@ -310,12 +320,16 @@ function on_transition( ttype, var, ttime )
         case Transition.ToNewList:
             if ( fe.layout.clones_list )
             {
-                grid.active = false
+                grid.set_active( false )
+                grid_surface.redraw = false
+                grid_surface.clear = false
                 clones_surface.to_x = 0.0
             }
             else
             {
-                grid.active = true
+                grid.set_active( true )
+                grid_surface.redraw = true
+                grid_surface.clear = true
                 clones_surface.to_x = flw
             }
 
@@ -329,6 +343,7 @@ function on_transition( ttype, var, ttime )
             break
 
         case Transition.FromOldSelection:
+        case Transition.ToNewList:
             update_stars()
             break
 
@@ -339,8 +354,7 @@ function on_transition( ttype, var, ttime )
 }
 
 
-// Need to call it again here to preserve the compatibility with AM+ v3.0.7
-fe.add_signal_handler( "on_signal" )
+if ( FeVersionNum <= 307) fe.add_signal_handler( "on_signal" )
 function on_signal( sig )
 {
     if ( sidebar_open )
@@ -351,7 +365,9 @@ function on_signal( sig )
                 UI_SOUND_SELECT.playing = SOUND_STATE
                 fe.list.filter_index = selected_filter
                 filter_selector.visible = false
-                grid.active = true
+                grid.set_active( true )
+                grid_surface.redraw = true
+                grid_surface.clear = true
                 grid_surface.to_x = 0.0
                 grid_surface.to_alpha = 255
                 sidebar_open = false
@@ -377,11 +393,13 @@ function on_signal( sig )
             case "right":
             case "back":
                 filter_selector.visible = false
-                grid.active = true
+                grid.set_active( true )
+                grid.video.video_playing = true
+                grid_surface.redraw = true
+                grid_surface.clear = true
                 grid_surface.to_x = 0.0
                 grid_surface.to_alpha = 255
                 sidebar_open = false
-                grid.video.to_alpha = 255
                 return true
         }
         return false
@@ -407,7 +425,9 @@ function on_signal( sig )
                     selected_filter = fe.list.filter_index
                     update_filters( 0 )
                     filter_selector.visible = true
-                    grid.active = false
+                    grid.set_active( false )
+                    grid_surface.redraw = false
+                    grid_surface.clear = false
                     grid_surface.to_x = side_width
                     grid_surface.to_alpha = 100
                     sidebar_open = true
