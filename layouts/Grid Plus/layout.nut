@@ -1,7 +1,7 @@
 /*
 ################################################################################
 
-Attract-Mode Plus Frontend - Grid layout v1.0
+Attract-Mode Plus Frontend - Grid Plus layout v1.0
 
 2024 (c) Radek Dutkiewicz
 https://github.com/oomek/attract-extra
@@ -9,7 +9,7 @@ https://github.com/oomek/attract-extra
 ################################################################################
 */
 
-class UserConfig </ help="Grid layout with custom filters menu" />
+class UserConfig </ help="Grid Plus layout with side filters selector" />
 {
     </ label="Columns", help="Number of columns to display", options="1,2,3,4,5", per_display="true", order=1 />
     columns = "3"
