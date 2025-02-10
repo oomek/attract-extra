@@ -1,10 +1,10 @@
 /*
 ################################################################################
 
-Attract-Mode Frontend - Wheel module v1.28
+Attract-Mode Frontend - Wheel module v1.31
 Provides an animated artwork strip
 
-by Oomek - Radek Dutkiewicz 2022
+by Oomek - Radek Dutkiewicz 2025
 https://github.com/oomek/attract-extra
 
 ################################################################################
@@ -72,7 +72,7 @@ fe.load_module( "config" )
 
 class Wheel
 {
-	static VERSION = 1.28
+	static VERSION = 1.31
 	static PRESETS_DIR = ::fe.module_dir + "wheel-presets/"
 	static SCRIPT_DIR = ::fe.script_dir
 	static SELECTION_SPEED = ::fe.get_config_value( "selection_speed_ms" ).tointeger()
@@ -164,9 +164,9 @@ class Wheel
 					cfg[k] <- preset[k]
 
 		// Parsing Wheel's properties
-		if ( "x" in cfg ) x = cfg.x else x = 0
-		if ( "y" in cfg ) y = cfg.y else y = 0
-		if ( "alpha" in cfg ) alpha = cfg.alpha else alpha = 255
+		if ( "x" in cfg ) x = cfg.x; else x = 0
+		if ( "y" in cfg ) y = cfg.y; else y = 0
+		if ( "alpha" in cfg ) alpha = cfg.alpha; else alpha = 255
 
 		// Parsing Wheel's config
 		if ( !("slots" in cfg )) cfg.slots <- 9
@@ -281,6 +281,9 @@ function Wheel::on_transition( ttype, var, ttime )
 			}
 			else end_idx_offset += var
 		}
+		// Cache implementation WIP
+		// if ( var > 0 ) ::fe.cache.load( ::fe.get_art( cfg.artwork_label, var + max_idx_offset + cfg.index_offset, 0, cfg.video_flags ))
+		// else ::fe.cache.load( ::fe.get_art( cfg.artwork_label, var - max_idx_offset + cfg.index_offset, 0, cfg.video_flags ))
 	}
 
 	else if ( ttype == Transition.FromOldSelection )
@@ -321,14 +324,14 @@ function Wheel::on_tick( ttime )
 
 	if ( queue_next != 0 )
 	{
-		if ( ::fe.layout.time - selection_time_old > SELECTION_SPEED )
+		// if ( ::fe.layout.time - selection_time_old > SELECTION_SPEED ) // Likely not needed
 		{
 			selection_time_old = ::fe.layout.time
 			local dir = ::sign( queue_next )
 			if ( ::abs( queue_next + queue_load ) > cfg.slots )
 			{
 				local jump = queue_next + queue_load - cfg.slots * dir
-				wheel_idx = ::wrap( wheel_idx + jump, ::fe.list.size )
+				wheel_idx = ::modulo( wheel_idx + jump, ::fe.list.size )
 				queue_next -= jump
 				resync = true
 			}
@@ -356,7 +359,7 @@ function Wheel::on_tick( ttime )
 		anim_int++
 		queue_load--
 		wheel_idx++
-		wheel_idx = ::wrap( wheel_idx, ::fe.list.size )
+		wheel_idx = ::modulo( wheel_idx, ::fe.list.size )
 		slots[cfg.slots - 1].video_flags = cfg.video_flags | Vid.NoAudio
 		slots[cfg.slots - 1].file_name = ::fe.get_art( cfg.artwork_label,
 		                                             idx2off( wheel_idx + max_idx_offset + cfg.index_offset, ::fe.list.index ),
@@ -369,7 +372,7 @@ function Wheel::on_tick( ttime )
 		anim_int--
 		queue_load++
 		wheel_idx--
-		wheel_idx = ::wrap( wheel_idx, ::fe.list.size )
+		wheel_idx = ::modulo( wheel_idx, ::fe.list.size )
 		slots[0].video_flags = cfg.video_flags | Vid.NoAudio
 		slots[0].file_name = ::fe.get_art( cfg.artwork_label,
 		                                             idx2off( wheel_idx - max_idx_offset + cfg.index_offset, ::fe.list.index ),
@@ -388,10 +391,16 @@ function Wheel::on_tick( ttime )
 	{
 		for ( local i = 0; i < cfg.slots; i++ )
 		{
-			local idx1 = ::wrap( mix_idx1 + i, cfg.slots )
-			local idx2 = ::wrap( mix_idx2 + i, cfg.slots )
+			local idx1 = ::modulo( mix_idx1 + i, cfg.slots )
+			local idx2 = ::modulo( mix_idx2 + i, cfg.slots )
 			slots[i][name] = ::mix( prop[idx1], prop[idx2], mix_amount )
-
+		}
+	}
+	// Adjusting slots position properties based on the wheel's position and anchor
+	foreach ( name, prop in layout )
+	{
+		for ( local i = 0; i < cfg.slots; i++ )
+		{
 			if ( name == "x" ) slots[i][name] += x
 			else if ( name == "y" ) slots[i][name] += y
 			else if ( name == "alpha" ) slots[i][name] = slots[i][name] / 255.0 * alpha
@@ -506,8 +515,8 @@ function Wheel::reload_slots()
 
 function Wheel::idx2off( new, old )
 {
-	local positive = ::wrap( new - old, ::fe.list.size )
-	local negative = ::wrap( old - new, ::fe.list.size )
+	local positive = ::modulo( new - old, ::fe.list.size )
+	local negative = ::modulo( old - new, ::fe.list.size )
 	if ( positive > negative )
 		return -negative
 	else
