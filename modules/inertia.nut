@@ -1,10 +1,10 @@
 /*
 ################################################################################
 
-Attract-Mode Frontend - Inertia module v2.46
+Attract-Mode Frontend - Inertia module v2.47
 Adds animation to object's properties
 
-by Oomek - Radek Dutkiewicz 2023
+by Oomek - Radek Dutkiewicz 2025
 https://github.com/oomek/attract-extra
 
 ################################################################################
@@ -976,12 +976,16 @@ class InertiaVar extends InertiaClass
 				return null
 
 			case "delay":
-				prop.delay = val
-				prop.timer = -prop.delay
+				if ( prop.delay != val )
+				{
+					prop.delay = val
+					prop.timer = -prop.delay
+				}
 				return null
 
 			case "phase":
-				prop.phase = val
+				if ( prop.phase != val )
+					prop.phase = val
 				return null
 
 			case "set":
