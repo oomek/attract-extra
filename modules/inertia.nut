@@ -1,7 +1,7 @@
 /*
 ################################################################################
 
-Attract-Mode Frontend - Inertia module v2.47
+Attract-Mode Frontend - Inertia module v2.50
 Adds animation to object's properties
 
 by Oomek - Radek Dutkiewicz 2025
@@ -149,11 +149,11 @@ art.running         returns true if any of the properties is still animating,
 ################################################################################
 */
 
-
+if ( FeVersionNum < 320 ) { fe.log( "ERROR: Inertia module v2.5 requires Attract-Mode Plus 3.2.0 or greater"); return }
 
 class InertiaClass
 {
-	static VERSION = 2.46
+	static VERSION = 2.50
 
 	Mode = {} // table with binary flags for Tweens and Easings
 	ModeName = {} // mode name look-up table
@@ -212,9 +212,7 @@ class InertiaClass.Property
 	loop = null
 	delay = null
 	phase = null
-
 	buffer = null
-	coeff = null
 }
 
 function InertiaClass::Tween( p, t )
@@ -351,11 +349,18 @@ function InertiaClass::Inertia( p )
 		t *= t; t *= t; t *= t
 		t = 1.0 - t
 
+		local refresh_rate = ScreenRefreshRate
+
+		if ( ::fe.layout.frame_time > 0.0 )
+    		refresh_rate = 1000.0 / ::fe.layout.frame_time
+
+		local coeff = ::sin(( 4.0 * ::PI ) / ( 8.0 + refresh_rate * p.time * 0.000825 * p.mass ))
+
 		// 3-pole lowpass filter
 		local b = p.buffer
-		b[0] += p.coeff * ( p.pos - b[0] )
-		b[1] += p.coeff * ( b[0] - b[1] )
-		b[2] += p.coeff * ( b[1] - b[2] )
+		b[0] += coeff * ( p.pos - b[0] )
+		b[1] += coeff * ( b[0] - b[1] )
+		b[2] += coeff * ( b[1] - b[2] )
 
 		// Compensation of filter's infinite response
 		b[0] = t * ( b[0] - p.pos ) + p.pos
@@ -370,12 +375,6 @@ function InertiaClass::Inertia( p )
 	}
 
 	return b[2]
-}
-
-function InertiaClass::SetSpeed( prop, time )
-{
-	// Converts tween time to filter coefficient
-	prop.coeff = ::sin(( 4.0 * ::PI ) / ( 8.0 + ScreenRefreshRate * time * 0.000825 * prop.mass ))
 }
 
 function InertiaClass::Initialize()
@@ -491,10 +490,7 @@ class InertiaObj extends InertiaClass
 			prop.loop = false
 			prop.delay = 0.0
 			prop.phase = 0.0
-
 			prop.buffer = ::array( 3, prop.pos )
-			SetSpeed( prop, prop.time )
-
 			props[p] <- prop
 		}
 	}
@@ -503,7 +499,7 @@ class InertiaObj extends InertiaClass
 	{
 		foreach ( p in props )
 		{
-			p.timer += 1000.0 / ScreenRefreshRate
+			p.timer += ::fe.layout.frame_time
 			if ( p.running && p.timer > 0.0 )
 			{
 				p.velocity = -p.inertia
@@ -613,7 +609,6 @@ class InertiaObj extends InertiaClass
 				foreach( p in properties )
 				{
 					p.time = val.tofloat()
-					SetSpeed( p, p.time )
 				}
 				return null
 
@@ -657,7 +652,6 @@ class InertiaObj extends InertiaClass
 				foreach( p in properties )
 				{
 					p.mass = val < 0.0 ? 0.0 : val > 1.0 ? 1.0 : val
-					SetSpeed( p, p.time )
 				}
 				return null
 
@@ -870,16 +864,14 @@ class InertiaVar extends InertiaClass
 		prop.loop = false
 		prop.delay = 0.0
 		prop.phase = 0.0
-
 		prop.buffer = ::array( 3, _val )
-		SetSpeed( prop, prop.time )
 
 		::fe.add_ticks_callback( this, "on_tick_var" )
 	}
 
 	function on_tick_var( tick_time )
 	{
-		prop.timer += 1000.0 / ScreenRefreshRate
+		prop.timer += ::fe.layout.frame_time
 		if ( prop.running && prop.timer > 0.0 )
 		{
 			prop.velocity = -prop.inertia
@@ -900,7 +892,6 @@ class InertiaVar extends InertiaClass
 		{
 			case "time":
 				prop.time = val.tofloat()
-				SetSpeed( prop, prop.time )
 				return null
 
 			case "to":
@@ -934,7 +925,6 @@ class InertiaVar extends InertiaClass
 
 			case "mass":
 				prop.mass = val < 0.0 ? 0.0 : val > 1.0 ? 1.0 : val
-				SetSpeed( prop, prop.time )
 				return null
 
 			case "tween":
