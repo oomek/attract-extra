@@ -1,7 +1,7 @@
 /*
 ################################################################################
 
-Attract-Mode Frontend - Inertia module v2.50
+Attract-Mode Frontend - Inertia module v3.00
 Adds animation to object's properties
 
 by Oomek - Radek Dutkiewicz 2025
@@ -149,11 +149,11 @@ art.running         returns true if any of the properties is still animating,
 ################################################################################
 */
 
-if ( FeVersionNum < 320 ) { fe.log( "ERROR: Inertia module v2.5 requires Attract-Mode Plus 3.2.0 or greater"); return }
+if ( FeVersionNum < 320 ) { fe.log( "ERROR: Inertia module v3.0 requires Attract-Mode Plus 3.2.0 or greater"); return }
 
 class InertiaClass
 {
-	static VERSION = 2.50
+	static VERSION = 3.00
 
 	Mode = {} // table with binary flags for Tweens and Easings
 	ModeName = {} // mode name look-up table
@@ -217,122 +217,94 @@ class InertiaClass.Property
 
 function InertiaClass::Tween( p, t )
 {
-	local t2 = t
 	local out = 0.0
 
-	// Checks if tween mode is Easing.Out only
-	if ( p.mode & ~Mask.OutOnly & Mask.Tween )
+	switch ( p.mode )
 	{
-		if ( p.mode & Mode.In ) t = 1.0 - t
-		else if ( p.mode & Mode.InOut ) t = ::fabs( t * 2.0 - 1.0 )
-		else if ( p.mode & Mode.OutIn ) t = 1.0 - ::fabs( t * 2.0 - 1.0 )
-	}
+		case Mode.Linear | Mode.Out: out = t; break
 
-	switch ( p.mode & Mask.Tween )
-	{
-		case Mode.Linear:
-			out = 1.0 - t
-			break
+		case Mode.Cubic | Mode.Out: out = ::ease.out_cubic( t, 0, 1, 1 ); break
+		case Mode.Cubic | Mode.In: out = ::ease.in_cubic( t, 0, 1, 1 ); break
+		case Mode.Cubic | Mode.OutIn: out = ::ease.out_in_cubic( t, 0, 1, 1 ); break
+		case Mode.Cubic | Mode.InOut: out = ::ease.in_out_cubic( t, 0, 1, 1 ); break
 
-		case Mode.Cubic:
-			out = ::pow( 1.0 - t, 3 )
-			break
+		case Mode.Quad | Mode.Out: out = ::ease.out_quad( t, 0, 1, 1 ); break
+		case Mode.Quad | Mode.In: out = ::ease.in_quad( t, 0, 1, 1 ); break
+		case Mode.Quad | Mode.OutIn: out = ::ease.out_in_quad( t, 0, 1, 1 ); break
+		case Mode.Quad | Mode.InOut: out = ::ease.in_out_quad( t, 0, 1, 1 ); break
 
-		case Mode.Quad:
-			out = ::pow( 1.0 - t, 2 )
-			break
+		case Mode.Quart | Mode.Out: out = ::ease.out_quart( t, 0, 1, 1 ); break
+		case Mode.Quart | Mode.In: out = ::ease.in_quart( t, 0, 1, 1 ); break
+		case Mode.Quart | Mode.OutIn: out = ::ease.out_in_quart( t, 0, 1, 1 ); break
+		case Mode.Quart | Mode.InOut: out = ::ease.in_out_quart( t, 0, 1, 1 ); break
 
-		case Mode.Quart:
-			out = ::pow( 1.0 - t, 4 )
-			break
+		case Mode.Quint | Mode.Out: out = ::ease.out_quint( t, 0, 1, 1 ); break
+		case Mode.Quint | Mode.In: out = ::ease.in_quint( t, 0, 1, 1 ); break
+		case Mode.Quint | Mode.OutIn: out = ::ease.out_in_quint( t, 0, 1, 1 ); break
+		case Mode.Quint | Mode.InOut: out = ::ease.in_out_quint( t, 0, 1, 1 ); break
 
-		case Mode.Quint:
-			out = ::pow( 1.0 - t, 5 )
-			break
+		case Mode.Sine | Mode.Out: out = ::ease.out_sine( t, 0, 1, 1 ); break
+		case Mode.Sine | Mode.In: out = ::ease.in_sine( t, 0, 1, 1 ); break
+		case Mode.Sine | Mode.OutIn: out = ::ease.out_in_sine( t, 0, 1, 1 ); break
+		case Mode.Sine | Mode.InOut: out = ::ease.in_out_sine( t, 0, 1, 1 ); break
 
-		case Mode.Sine:
-		case Mode.QuartSine:
+		case Mode.QuartSine | Mode.Out: out = ::ease.out_sine( t, 0, 1, 1 ); break
+		case Mode.QuartSine | Mode.In: out = ::ease.in_sine( t, 0, 1, 1 ); break
+		case Mode.QuartSine | Mode.OutIn: out = ::ease.out_in_sine( t, 0, 1, 1 ); break
+		case Mode.QuartSine | Mode.InOut: out = ::ease.in_out_sine( t, 0, 1, 1 ); break
+
+		case Mode.Cosine | Mode.Out:
 			out = 1.0 - ::sin( t * ::PI * 0.5 )
 			break
 
-		case Mode.Cosine:
-			out = ::cos( t * ::PI * 0.5 )
+		case Mode.HalfSine | Mode.Out:
+		case Mode.HalfSine | Mode.In:
+		case Mode.HalfSine | Mode.OutIn:
+		case Mode.HalfSine | Mode.InOut: out = ::ease.in_out_sine( t, 0, 1, 1 ); break
+
+		case Mode.FullSine | Mode.Out:
+			out = ( 1.0 - ::cos( ::PI * 2.0 * ( t + p.phase ))) * 0.5
 			break
 
-		case Mode.HalfSine:
-			out = ::cos( t * ::PI ) * 0.5 + 0.5
+		case Mode.CircleX | Mode.Out:
+			out = ( ::cos( ::PI * 2.0 * p.phase ) - ::cos( ::PI * 2.0 * ( t + p.phase ))) * 0.5
 			break
 
-		case Mode.FullSine:
-			out = ::cos( ::PI * 2.0 * ( t + p.phase )) * 0.5 + 0.5
+		case Mode.CircleY | Mode.Out:
+			out = ( ::sin( ::PI * 2.0 * p.phase ) - ::sin( ::PI * 2.0 * ( t + p.phase ))) * 0.5
 			break
 
-		case Mode.CircleX:
-			out = ::cos( ::PI * 2.0 * ( t + p.phase )) * 0.5 + 0.5 - ::cos( ::PI * 2.0 * ( p.phase )) * 0.5 + 0.5
+		case Mode.Inertia | Mode.Out: // Mode.Inertia is using Mode.Expo
+
+		case Mode.Expo | Mode.Out: out = ::ease.out_expo2( t, 0, 1, 1 ); break
+		case Mode.Expo | Mode.In: out = ::ease.in_expo2( t, 0, 1, 1 ); break
+		case Mode.Expo | Mode.OutIn: out = ::ease.out_in_expo2( t, 0, 1, 1 ); break
+		case Mode.Expo | Mode.InOut: out = ::ease.in_out_expo2( t, 0, 1, 1 ); break
+
+		case Mode.Circle | Mode.Out: out = ::ease.out_circ( t, 0, 1, 1 ); break
+		case Mode.Circle | Mode.In: out = ::ease.in_circ( t, 0, 1, 1 ); break
+		case Mode.Circle | Mode.OutIn: out = ::ease.out_in_circ( t, 0, 1, 1 ); break
+		case Mode.Circle | Mode.InOut: out = ::ease.in_out_circ( t, 0, 1, 1 ); break
+
+		case Mode.Elastic | Mode.Out:
+			out = ::ease.out_elastic2( t, 0, 1, 1.0 + ( p.tail / p.time ), 1.0 / ( p.tail / p.time ))
 			break
 
-		case Mode.CircleY:
-			out = ::sin( ::PI * 2.0 * ( t + p.phase )) * 0.5 + 0.5 - ::sin( ::PI * 2.0 * ( p.phase )) * 0.5 + 0.5
+		case Mode.Back | Mode.Out: out = ::ease.out_back2( t, 0, 1, 1 ); break
+		case Mode.Back | Mode.In: out = ::ease.in_back2( t, 0, 1, 1 ); break
+		case Mode.Back | Mode.OutIn: out = ::ease.out_in_back2( t, 0, 1, 1 ); break
+		case Mode.Back | Mode.InOut: out = ::ease.in_out_back2( t, 0, 1, 1 ); break
+
+		case Mode.Bounce | Mode.Out:
+			out = ::ease.out_bounce2( t, 0, 1, 1.0 + ( p.tail / p.time ), 1.0 / ( p.tail / p.time ))
 			break
 
-		case Mode.Inertia:
-		case Mode.Expo:
-			local a = 1.0 - t
-			a *= a
-			a *= a
-			local b = a * t
-			a *= a
-			out = a + b * 0.3
+		case Mode.Jump | Mode.Out:
+			out = 1.0 - ::pow((( t + p.phase ) % 1.0 ) * 2.0 - 1.0, 2 )
 			break
 
-		case Mode.Circle:
-			out = 1.0 - ::sqrt( 1.0 - ::pow( t - 1.0, 2 ))
-			break
-
-		case Mode.Elastic:
-			local e = 1.0 - t / ( p.tail / p.time + 1.0 )
-			e *= e
-			local i = e
-			e *= e; e *= e
-			e = 0.1 * ( i - e ) + e
-			out = e * ::cos( t * ::PI * ( 2.0 - e ))
-			break
-
-		case Mode.Back:
-			t = 1.0 - t
-			out = t * t * t * ( t * 3.0 - 2.0 ) * ( 2.0 - t )
-			break
-
-		case Mode.Bounce:
-			if ( p.timer < p.time ) return 1.0 - t * t
-			local k = p.tail / p.time
-			local n = 2.0 / k + 1.0
-			local d = ( n - n * t + t + 1.0 ) * 0.5
-			d = ::floor( ::log( d ) / ::log( n ))
-			d = ::pow( n, d.tointeger() )
-			out = -( d * k - k + t - 1.0 ) * ( d * k + d * 2.0 - k + t - 1.0 )
-			break
-
-		case Mode.Jump:
-			t = (( t + p.phase ) % 1.0 ) * 2.0 - 1.0
-			out = t * t
-			break
-	}
-
-	// Checks if tween mode is Easing.Out only
-	if ( p.mode & ~Mask.OutOnly & Mask.Tween )
-	{
-		if ( p.mode & Mode.In ) out = 1.0 - out
-		else if ( p.mode & Mode.InOut )
-		{
-			if ( t2 > 0.5 ) out = out * 0.5
-			else out = 1.0 - out * 0.5
-		}
-		else if ( p.mode & Mode.OutIn )
-		{
-			if ( t2 > 0.5 ) out = ( 1.0 - out ) * 0.5
-			else out = 1.0 - ( 1.0 - out ) * 0.5
-		}
+		default:
+			out = 0
 	}
 
 	return out
@@ -444,8 +416,8 @@ function InertiaClass::Compute( prop )
 	// Tween in progress
 	else
 	{
-		local phase = prop.timer / prop.time
-		out = Tween( prop, phase )
+		local phase = ( prop.timer / prop.time )
+		out = 1.0 - Tween( prop, phase )
 		out = prop.to - ( prop.to - prop.from ) * out
 	}
 	return out
@@ -480,7 +452,7 @@ class InertiaObj extends InertiaClass
 			prop.from = prop.pos
 			prop.to = prop.pos
 			prop.inertia = prop.pos
-			prop.mode = Mode.Inertia
+			prop.mode = Mode.Inertia | Mode.Out
 			prop.running = false
 			prop.time = _time
 			prop.tail = 0.0
@@ -854,7 +826,7 @@ class InertiaVar extends InertiaClass
 		prop.from = _val
 		prop.to = _val
 		prop.inertia = _val
-		prop.mode = Mode.Inertia
+		prop.mode = Mode.Inertia | Mode.Out
 		prop.running = false
 		prop.time = _time
 		prop.tail = 0.0
