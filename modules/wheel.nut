@@ -1,10 +1,10 @@
 /*
 ################################################################################
 
-Attract-Mode Frontend - Wheel module v1.31
+Attract-Mode Frontend - Wheel module v1.4.0
 Provides an animated artwork strip
 
-by Oomek - Radek Dutkiewicz 2025
+by Oomek - Radek Dutkiewicz 2026
 https://github.com/oomek/attract-extra
 
 ################################################################################
@@ -16,66 +16,321 @@ local wheel = fe.add_wheel( preset )
 
 preset can be one of the following:
 
-> string - for example "arch-vertical"
-  which is loaded from modules/wheel-presets folder
-
-> file path - for example "my_preset.nut" that is loaded from the layout folder
-
-> table - for example my_preset defined inside the layout code as local
+string - for example "arch-vertical"
+  Loads a preset from modules/wheel-presets folder (no extension)
+  EXAMPLE:local wheel = fe.add_wheel( "arch-vertical" )
 
 
-PROPERTIES:
+file path - for example "my_wheel.nut"
+  Loads a wheel preset from the layout folder
+  EXAMPLE: local wheel = fe.add_wheel( "my_wheel.nut" )
+
+
+table - for example my_preset defined inside the layout code as local table
+  EXAMPLE: local wheel = fe.add_wheel( my_preset )
+  See EXAMPLES section to learn preset table structure
+
+
+WHEEL PROPERTIES:
 --------------------------------------------------------------------------------
-x
-
-y
+x/y
+  The position of the wheel anchor point on the screen.
 
 alpha
+  The overall alpha transparency of the wheel (0-255).
+  This affects all slots proportionally.
+  Default: 255
 
 speed
+  The animation speed in milliseconds for wheel transitions.
+  Lower values = faster animation.
+  Default: 500
+
+slots
+  Total number of slots in the wheel ( including 2 slots on edges that fade to alpha 0 )
+  Default: 9 (set in preset or config)
 
 artwork_label
+  The artwork identifier to display in the wheel slots.
+  Examples: "snap", "wheel", "marquee", "flyer", etc.
+  Default: "snap"
 
 video_flags
+  Video playback flags for artwork. Can be combined with | operator.
+  Default: Vid.Default
 
 blend_mode
+  The blending mode for slots.
+  Default: BlendMode.Alpha
 
 zorder
+  The base z-order for all wheel slots.
+  Default: 0
 
 zorder_offset
+  Offset applied to the z-order calculation of slots.
+  Affects which slot appears on top.
+  Default: 0
 
 index_offset
+  Default: 0 ( current game is in the middle slot )
 
 preserve_aspect_ratio
+  If true, slot images maintain their aspect ratio.
+  If false, images stretch to fill slot dimensions.
+  Default: false
 
 trigger
+  Default: Transition.ToNewSelection
 
-...TODO
+acceleration
+  Enable/disable wheel scrolling acceleration when holding navigation keys.
+  When true, allows faster scrolling when AM+ accelerates navigation.
+  When false, enforces the speed limit even during fast navigation.
+  Default: true
+
+anchor
+  The anchor point for wheel positioning
+  Options: Wheel.Anchor.Centre
+           Wheel.Anchor.Left
+           Wheel.Anchor.Right
+           Wheel.Anchor.Top
+           Wheel.Anchor.Bottom
+           Wheel.Anchor.TopLeft
+           Wheel.Anchor.TopRight
+           Wheel.Anchor.BottomLeft
+           Wheel.Anchor.BottomRight
+  Default: Wheel.Anchor.Centre
+
+
+READ-ONLY PROPERTIES:
+--------------------------------------------------------------------------------
+spinning
+  Returns true if the wheel is currently animating, false otherwise.
+  Useful for hiding UI elements during wheel animation.
+
+sel_slot
+  Reference to the currently selected slot's image object.
+  Allows direct manipulation of the selected slot's properties.
+
+slots
+  Array of all slot image objects in the wheel.
+
+
+
+PRESET-SPECIFIC PROPERTIES:
+--------------------------------------------------------------------------------
+Presets may define additional properties. Access them directly on the wheel object.
+Example for arch-vertical preset:
+
+arch
+  Curvature of the arch in degrees (-180 to 180).
+  Negative values reverse the arch direction.
+  Default: 90
+
+slot_aspect_ratio
+  Width to height ratio.
+  Default: 2.0
+
+slot_scale
+  Global scale multiplier for all slots.
+  Default: 1.0
+
+slot_width
+  Fixed width for slots. Set to > 0 to override dynamic sizing.
+  Default: 0
+
+slot_height
+  Fixed height for slots. Set to > 0 to override dynamic sizing.
+  Default: 0
+
+sel_slot_scale
+  Scale multiplier for the selected slot.
+  Default: 1.0
+
+sel_slot_scale_spread
+  How many neighboring slots are affected by sel_slot_scale.
+  Default: 1.0
+
+scale_fix
+  false - slots remain same size
+  true - slots scale with arch to maintain constant wheel height
+  Default: false
+
+
+LAYOUT ARRAYS:
+--------------------------------------------------------------------------------
+Presets define layout arrays that control slot properties per position.
+Common layout arrays include:
+
+  layout.x[] - X position for each slot
+  layout.y[] - Y position for each slot
+  layout.width[] - Width for each slot
+  layout.height[] - Height for each slot
+  layout.alpha[] - Alpha transparency for each slot (0-255)
+  layout.rotation[] - Rotation angle for each slot
+  layout.origin_x[] - X origin point for rotation/scaling
+  layout.origin_y[] - Y origin point for rotation/scaling
+
+These arrays are automatically interpolated during wheel animation.
 
 
 EXAMPLES:
 --------------------------------------------------------------------------------
-fe.load_module("wheel.nut")
+
+LEVEL 1 - Loading a predefined preset:
+--------------------------------------
+fe.load_module("wheel")
 
 local wheel = fe.add_wheel( "arch-vertical" )
 
-...TODO
+// Set wheel properties
+wheel.x = fe.layout.width * 0.8
+wheel.y = fe.layout.height / 2
+wheel.speed = 800
+wheel.artwork_label = "snap"
+wheel.preserve_aspect_ratio = false
+
+// Set preset-specific properties
+wheel.arch = 100
+wheel.sel_slot_scale = 1.5
+
+
+LEVEL 2 - Modifying a preset:
+-----------------------------
+fe.load_module("wheel")
+
+local preset =
+{
+	function init()
+	{
+		// Load base preset from modules/wheel-presets folder
+		preset <- "arch-vertical"
+
+		// Override wheel properties
+		slots <- 15
+		speed <- 600
+
+		// Override preset properties
+		arch <- 80
+		sel_slot_scale <- 2.0
+		sel_slot_scale_spread <- 3
+	}
+}
+
+local wheel = fe.add_wheel( preset )
+
+
+LEVEL 3 - Animating preset properties with Inertia
+---------------------------------------------------
+fe.load_module("wheel")
+fe.load_module("inertia")
+
+local wheel = fe.add_wheel( "arch-vertical" )
+wheel.speed = 500
+
+// Bind Inertia to wheel preset properties
+wheel = Inertia( wheel, 1000, "sel_slot_scale", "alpha" )
+wheel.to_sel_slot_scale = 2.0
+wheel.to_alpha = 50
+wheel.delay_alpha = 1500
+
+fe.add_transition_callback( "on_transition" )
+function on_transition( ttype, var, ttime )
+{
+	switch ( ttype )
+	{
+		case Transition.FromOldSelection:
+			wheel.to_sel_slot_scale = 1.0
+			wheel.delay_sel_slot_scale = 400
+			wheel.to_alpha = 255
+			wheel.delay_alpha = 0
+			break
+
+		case Transition.EndNavigation:
+			wheel.to_sel_slot_scale = 2.0
+			wheel.delay_sel_slot_scale = 0
+			wheel.to_alpha = 50
+			wheel.delay_alpha = 1500
+			break
+	}
+}
+
+
+LEVEL 4 - Creating a custom preset
+----------------------------------
+fe.load_module("wheel")
+
+local my_preset =
+{
+	function init()
+	{
+		// Wheel properties
+		x <- parent.width / 2
+		y <- parent.height / 2
+		width <- parent.width
+		haight <- parent.height
+		slots <- 7
+		speed <- 400
+		artwork_label <- "snap"
+		preserve_aspect_ratio <- false
+		video_flags <- Vid.ImagesOnly
+		anchor <- Wheel.Anchor.Centre
+
+		// Custom preset properties
+		slot_scale <- 1.0
+
+		// Declare layout arrays
+		layout.x <- []
+		layout.width <- []
+		layout.height <- []
+		layout.alpha <- [0,150,150,255,150,150,0]
+	}
+
+	function update()
+	{
+		local slot_size = parent.width / (slots - 2)
+
+		// Populate layout arrays based on properties
+		for ( local i = 0; i < slots; i++ )
+		{
+			layout.x[i] = slot_size * ( i - slots / 2 ) * slot_scale
+			layout.width[i] = slot_size * slot_scale
+			layout.height[i] = slot_size * slot_scale
+			layout.alpha[i] = 255
+		}
+	}
+}
+
+local wheel = fe.add_wheel( my_preset )
+
+fe.add_ticks_callback( "on_tick" )
+function on_tick ( ttime )
+{
+	wheel.slot_scale = sin( ttime * 0.002 ) * 0.1 + 1.0
+}
+
+
+NOTES:
+--------------------------------------------------------------------------------
+- First and last slots always fade to alpha 0
+- The selected slot's video_flags removes Vid.NoAudio flag when navigation ends
+- Changing preset properties triggers automatic update() if the function exists
+- Page size is automatically adjusted based on slots count
 
 ################################################################################
 */
 
+if ( FeVersionNum < 320 ) { fe.log( "ERROR: Wheel module v1.4.0 requires Attract-Mode Plus 3.2.0 or greater"); return }
 
-
-fe.load_module( "math" )
 fe.load_module( "inertia" )
-fe.load_module( "config" )
 
 class Wheel
 {
-	static VERSION = 1.31
+	static VERSION = 140
 	static PRESETS_DIR = ::fe.module_dir + "wheel-presets/"
 	static SCRIPT_DIR = ::fe.script_dir
-	static SELECTION_SPEED = ::fe.get_config_value( "selection_speed_ms" ).tointeger()
+	static SELECTION_SPEED = ::fe.get_general_config().selection_speed_ms.tointeger()
 	FRAME_TIME = null
 
 	// properties
@@ -145,6 +400,7 @@ class Wheel
 			cfg = config
 			layout = {}
 			cfg.layout <- {}
+			cfg.parent <- parent
 			cfg.init()
 		}
 
@@ -180,6 +436,7 @@ class Wheel
 		if ( !("index_offset" in cfg )) cfg.index_offset <- 0
 		if ( !("preserve_aspect_ratio" in cfg )) cfg.preserve_aspect_ratio <- false
 		if ( !("trigger" in cfg )) cfg.trigger <- Transition.ToNewSelection
+		if ( !("acceleration" in cfg )) cfg.acceleration <- true
 		if ( !("preset" in cfg )) cfg.preset <- ""
 
 		// Copying updated config parameters back to preset
@@ -281,9 +538,9 @@ function Wheel::on_transition( ttype, var, ttime )
 			}
 			else end_idx_offset += var
 		}
-		// Cache implementation WIP
-		// if ( var > 0 ) ::fe.cache.load( ::fe.get_art( cfg.artwork_label, var + max_idx_offset + cfg.index_offset, 0, cfg.video_flags ))
-		// else ::fe.cache.load( ::fe.get_art( cfg.artwork_label, var - max_idx_offset + cfg.index_offset, 0, cfg.video_flags ))
+		// Image preload
+		if ( var > 0 ) ::fe.image_cache.add_image( ::fe.get_art( cfg.artwork_label, var + max_idx_offset + cfg.index_offset, 0, cfg.video_flags ))
+		else ::fe.image_cache.add_image( ::fe.get_art( cfg.artwork_label, var - max_idx_offset + cfg.index_offset, 0, cfg.video_flags ))
 	}
 
 	else if ( ttype == Transition.FromOldSelection )
@@ -324,7 +581,7 @@ function Wheel::on_tick( ttime )
 
 	if ( queue_next != 0 )
 	{
-		// if ( ::fe.layout.time - selection_time_old > SELECTION_SPEED ) // Likely not needed
+		if ( cfg.acceleration || ::fe.layout.time - selection_time_old > SELECTION_SPEED )
 		{
 			selection_time_old = ::fe.layout.time
 			local dir = ::sign( queue_next )
@@ -362,9 +619,9 @@ function Wheel::on_tick( ttime )
 		wheel_idx = ::modulo( wheel_idx, ::fe.list.size )
 		slots[cfg.slots - 1].video_flags = cfg.video_flags | Vid.NoAudio
 		slots[cfg.slots - 1].file_name = ::fe.get_art( cfg.artwork_label,
-		                                             idx2off( wheel_idx + max_idx_offset + cfg.index_offset, ::fe.list.index ),
-		                                             0,
-		                                             cfg.video_flags & Art.ImagesOnly )
+			idx2off( wheel_idx + max_idx_offset + cfg.index_offset, ::fe.list.index ),
+			0,
+			cfg.video_flags & Art.ImagesOnly )
 	}
 	if ( anim.get + anim_int >= 0.5 && ( anim.velocity > 0.0 || cfg.speed < FRAME_TIME ))
 	{
@@ -375,9 +632,9 @@ function Wheel::on_tick( ttime )
 		wheel_idx = ::modulo( wheel_idx, ::fe.list.size )
 		slots[0].video_flags = cfg.video_flags | Vid.NoAudio
 		slots[0].file_name = ::fe.get_art( cfg.artwork_label,
-		                                             idx2off( wheel_idx - max_idx_offset + cfg.index_offset, ::fe.list.index ),
-		                                             0,
-		                                             cfg.video_flags & Art.ImagesOnly )
+			idx2off( wheel_idx - max_idx_offset + cfg.index_offset, ::fe.list.index ),
+			0,
+			cfg.video_flags & Art.ImagesOnly )
 	}
 
 	// SETTING PROPERTIES
@@ -393,9 +650,10 @@ function Wheel::on_tick( ttime )
 		{
 			local idx1 = ::modulo( mix_idx1 + i, cfg.slots )
 			local idx2 = ::modulo( mix_idx2 + i, cfg.slots )
-			slots[i][name] = ::mix( prop[idx1], prop[idx2], mix_amount )
+			slots[i][name] = ::mix( prop[idx2], prop[idx1], mix_amount )
 		}
 	}
+
 	// Adjusting slots position properties based on the wheel's position and anchor
 	foreach ( name, prop in layout )
 	{
@@ -408,8 +666,6 @@ function Wheel::on_tick( ttime )
 			else if ( name == "origin_y" ) slots[i][name] += slots[i].height * cfg.anchor[1]
 		}
 	}
-
-	// sel_slot.alpha = 255
 
 	// Center slots if origin not defined in layout
 	foreach ( i, s in slots )
@@ -474,6 +730,10 @@ function Wheel::_set( idx, val )
 			if ( "update" in preset ) preset.update()
 			if ( "update" in cfg ) cfg.update()
 	}
+
+	// Reset the alpha of edge slots in case the preset ovverrides it in update()
+	layout.alpha[0] = 0
+	layout.alpha[cfg.slots - 1] = 0
 }
 
 Wheel.Anchor <-
@@ -503,9 +763,9 @@ function Wheel::reload_slots()
 	for ( local i = 0; i < cfg.slots; i++ )
 	{
 		slots[i].file_name = ::fe.get_art( cfg.artwork_label,
-		                                 i - max_idx_offset + cfg.index_offset,
-		                                 0,
-		                                 cfg.video_flags & Art.ImagesOnly )
+			i - max_idx_offset + cfg.index_offset,
+			0,
+			cfg.video_flags & Art.ImagesOnly )
 
 		slots[i].video_flags = cfg.video_flags | Vid.NoAudio
 	}
