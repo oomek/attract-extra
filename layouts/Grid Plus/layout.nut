@@ -1,7 +1,7 @@
 /*
 ################################################################################
 
-Attract-Mode Plus Frontend - Grid Plus layout v1.1
+Attract-Mode Plus Frontend - Grid Plus layout v1.1.1
 
 2024 (c) Radek Dutkiewicz
 https://github.com/oomek/attract-extra
@@ -34,18 +34,18 @@ class UserConfig </ help="Grid Plus layout with side filters selector" />
 }
 cfg <- fe.get_config()
 
-fe.load_module( "math" )
-fe.do_nut( "grid.nut" )
-fe.load_module( "inertia" )
-
 local selection_speed = 40
 if ( FeVersionNum < 320 )
 {
+    fe.load_module( "math" )
     fe.load_module( "config" )
     selection_speed = ::fe.get_config_value( "selection_speed_ms" ).tointeger()
 }
 else
     selection_speed = ::fe.get_general_config()["selection_speed_ms"].tointeger()
+
+fe.do_nut( "grid.nut" )
+fe.load_module( "inertia" )
 
 local flw = fe.layout.width
 local flh = fe.layout.height
