@@ -1,7 +1,7 @@
 /*
 ################################################################################
 
-Attract-Mode Frontend - Wheel module v1.4.0
+Attract-Mode Frontend - Wheel module v1.4.1
 Provides an animated artwork strip
 
 by Oomek - Radek Dutkiewicz 2026
@@ -321,13 +321,13 @@ NOTES:
 ################################################################################
 */
 
-if ( FeVersionNum < 320 ) { fe.log( "ERROR: Wheel module v1.4.0 requires Attract-Mode Plus 3.2.0 or greater"); return }
+if ( FeVersionNum < 320 ) { fe.log( "\nERROR: Wheel module 1.4.1 requires Attract-Mode Plus 3.2.0 or greater"); return }
 
 fe.load_module( "inertia" )
 
 class Wheel
 {
-	static VERSION = 140
+	static VERSION = 141
 	static PRESETS_DIR = ::fe.module_dir + "wheel-presets/"
 	static SCRIPT_DIR = ::fe.script_dir
 	static SELECTION_SPEED = ::fe.get_general_config().selection_speed_ms.tointeger()
@@ -539,8 +539,11 @@ function Wheel::on_transition( ttype, var, ttime )
 			else end_idx_offset += var
 		}
 		// Image preload
-		if ( var > 0 ) ::fe.image_cache.add_image( ::fe.get_art( cfg.artwork_label, var + max_idx_offset + cfg.index_offset, 0, cfg.video_flags ))
-		else ::fe.image_cache.add_image( ::fe.get_art( cfg.artwork_label, var - max_idx_offset + cfg.index_offset, 0, cfg.video_flags ))
+		if ( cfg.video_flags & Vid.ImagesOnly )
+		{
+			if ( var > 0 ) ::fe.image_cache.add_image( ::fe.get_art( cfg.artwork_label, var + max_idx_offset + cfg.index_offset, 0, cfg.video_flags ))
+			else ::fe.image_cache.add_image( ::fe.get_art( cfg.artwork_label, var - max_idx_offset + cfg.index_offset, 0, cfg.video_flags ))
+		}
 	}
 
 	else if ( ttype == Transition.FromOldSelection )
