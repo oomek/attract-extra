@@ -1,7 +1,7 @@
 /*
 ################################################################################
 
-Attract-Mode Frontend - Wheel module v1.4.1
+Attract-Mode Frontend - Wheel module v1.4.2
 Provides an animated artwork strip
 
 by Oomek - Radek Dutkiewicz 2026
@@ -321,13 +321,13 @@ NOTES:
 ################################################################################
 */
 
-if ( FeVersionNum < 320 ) { fe.log( "\nERROR: Wheel module 1.4.1 requires Attract-Mode Plus 3.2.0 or greater"); return }
+if ( FeVersionNum < 320 ) { fe.log( "\nERROR: Wheel module 1.4.2 requires Attract-Mode Plus 3.2.0 or greater"); return }
 
 fe.load_module( "inertia" )
 
 class Wheel
 {
-	static VERSION = 141
+	static VERSION = 142
 	static PRESETS_DIR = ::fe.module_dir + "wheel-presets/"
 	static SCRIPT_DIR = ::fe.script_dir
 	static SELECTION_SPEED = ::fe.get_general_config().selection_speed_ms.tointeger()
@@ -730,6 +730,7 @@ function Wheel::_set( idx, val )
 			if ( idx in this ) idx = val
 			else if ( idx in preset ) preset[idx] = val
 			else if ( idx in cfg ) cfg[idx] = val
+			else if ( idx in slots[0].__getTable ) foreach( s in slots ) s[idx] = val
 			if ( "update" in preset ) preset.update()
 			if ( "update" in cfg ) cfg.update()
 	}
