@@ -294,7 +294,7 @@ local my_preset =
 		// Populate layout arrays based on properties
 		for ( local i = 0; i < slots; i++ )
 		{
-			layout.x[i] = slot_size * ( i - slots / 2 ) * slot_scale
+			layout.x[i] = slot_size * ( i - slots / 2 )
 			layout.width[i] = slot_size * slot_scale
 			layout.height[i] = slot_size * slot_scale
 			layout.alpha[i] = 255
@@ -621,10 +621,9 @@ function Wheel::on_tick( ttime )
 		wheel_idx++
 		wheel_idx = ::modulo( wheel_idx, ::fe.list.size )
 		slots[cfg.slots - 1].video_flags = cfg.video_flags | Vid.NoAudio
-		slots[cfg.slots - 1].file_name = ::fe.get_art( cfg.artwork_label,
+		load_slot( slots[cfg.slots - 1],
 			idx2off( wheel_idx + max_idx_offset + cfg.index_offset, ::fe.list.index ),
-			0,
-			cfg.video_flags & Art.ImagesOnly )
+			0 )
 	}
 	if ( anim.get + anim_int >= 0.5 && ( anim.velocity > 0.0 || cfg.speed < FRAME_TIME ))
 	{
@@ -634,10 +633,9 @@ function Wheel::on_tick( ttime )
 		wheel_idx--
 		wheel_idx = ::modulo( wheel_idx, ::fe.list.size )
 		slots[0].video_flags = cfg.video_flags | Vid.NoAudio
-		slots[0].file_name = ::fe.get_art( cfg.artwork_label,
+		load_slot( slots[0],
 			idx2off( wheel_idx - max_idx_offset + cfg.index_offset, ::fe.list.index ),
-			0,
-			cfg.video_flags & Art.ImagesOnly )
+			0 )
 	}
 
 	// SETTING PROPERTIES
@@ -766,15 +764,28 @@ function Wheel::reload_slots()
 
 	for ( local i = 0; i < cfg.slots; i++ )
 	{
-		slots[i].file_name = ::fe.get_art( cfg.artwork_label,
+		load_slot( slots[i],
 			i - max_idx_offset + cfg.index_offset,
-			0,
-			cfg.video_flags & Art.ImagesOnly )
+			0 )
 
 		slots[i].video_flags = cfg.video_flags | Vid.NoAudio
 	}
 
 	slots[selected_slot_idx].video_flags = cfg.video_flags
+}
+
+function Wheel::load_slot( slot, index_offset, filter_offset )
+{
+	if (( "slot_class" in cfg ) && cfg.slot_class )
+	{
+		slot.index_offset = index_offset
+		slot.filter_offset = filter_offset
+	}
+
+	slot.file_name = ::fe.get_art( cfg.artwork_label,
+		index_offset,
+		filter_offset,
+		cfg.video_flags & Art.ImagesOnly )
 }
 
 function Wheel::idx2off( new, old )
