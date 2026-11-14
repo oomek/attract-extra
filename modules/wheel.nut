@@ -1,7 +1,7 @@
 /*
 ################################################################################
 
-Attract-Mode Frontend - Wheel module v1.4.2
+Attract-Mode Frontend - Wheel module v1.5.0
 Provides an animated artwork strip
 
 by Oomek - Radek Dutkiewicz 2026
@@ -49,6 +49,12 @@ speed
 slots
   Total number of slots in the wheel ( including 2 slots on edges that fade to alpha 0 )
   Default: 9 (set in preset or config)
+
+slot_class
+  A custom class to use for wheel slots instead of the standard image object.
+  The class must have a constructor accepting ( label, x, y, width, height ) parameters.
+  This allows for slots consisting of multiple elements.
+  Default: null
 
 artwork_label
   The artwork identifier to display in the wheel slots.
@@ -425,6 +431,7 @@ class Wheel
 		if ( "alpha" in cfg ) alpha = cfg.alpha; else alpha = 255
 
 		// Parsing Wheel's config
+		local cfg_blend_mode_defined = ( "blend_mode" in cfg )
 		if ( !("slots" in cfg )) cfg.slots <- 9
 		if ( !("speed" in cfg )) cfg.speed <- 500
 		if ( !("anchor" in cfg )) cfg.anchor <- ::Wheel.Anchor.Centre
@@ -495,11 +502,16 @@ class Wheel
 		// Creating an array of images
 		for ( local i = 0; i < cfg.slots; i++ )
 		{
-			local s = surface.add_image( "", 0, 0, 1, 1 )
+			local s = null
+			if (( "slot_class" in cfg ) && cfg.slot_class )
+				s = cfg.slot_class( "", 0, 0, layout.width[selected_slot_idx], layout.height[selected_slot_idx] )
+			else
+				s = surface.add_image( "", 0, 0, layout.width[selected_slot_idx], layout.height[selected_slot_idx] )
+
 			s.video_flags = cfg.video_flags
 			s.preserve_aspect_ratio = cfg.preserve_aspect_ratio
 			s.mipmap = true
-			s.blend_mode = cfg.blend_mode
+			if ( cfg_blend_mode_defined || !( ( "slot_class" in cfg ) && cfg.slot_class && cfg.blend_mode == BlendMode.Alpha )) s.blend_mode = cfg.blend_mode
 			s.zorder =  max_idx_offset - ::abs( i + cfg.zorder_offset - max_idx_offset ) + cfg.zorder + ::abs( cfg.zorder_offset )
 			slots.push( s )
 		}
